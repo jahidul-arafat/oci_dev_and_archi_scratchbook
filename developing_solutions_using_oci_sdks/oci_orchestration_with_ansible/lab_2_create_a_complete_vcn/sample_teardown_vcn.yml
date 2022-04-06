@@ -1,0 +1,96 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+  vars_prompt:
+    - name: vcn_id
+      prompt: Enter VCN OCID
+      default: ocid1.vcn.oc1.ap-mumbai-1.amaaaaaa2br7tayaaimdivtjzlm5f5dsbfqithyf5subnt3apsdpc7wi6dsq
+      private: no
+
+    - name: public_subnet_id
+      prompt: Enter Public Subnet OCID
+      default: ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaa4nwczv7lvvrkrvtc4j5oirfikwikkr7jffaeatyhbkf33ocgfqea
+      private: no
+
+    - name: private_subnet_id
+      prompt: Enter Private Subnet OCID
+      default: ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaamlgyiynpw3rp6h2nvjjbqu6fnzgsxz2yhtt6qgu2bqy4tuccilq
+      private: no
+
+    - name: public_security_list_ocid
+      prompt: Enter Public Security List OCID
+      default: ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaa7fpowcwcza5zpbssv4jzaqwosslqwuqlnk3xgr7sg6a2zyucrv5q
+      private: no
+
+    - name: private_security_list_ocid
+      prompt: Enter Private Security List OCID
+      default: ocid1.securitylist.oc1.ap-mumbai-1.aaaaaaaaxs2z3o7jz4kieahpy2vsozaql53melxkinfvn3egml43dtmuybsa
+      private: no
+
+    - name: public_rt_id
+      prompt: Enter Public Route Table OCID
+      default: ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaa56d7qitvsk4sry62xzezugbflclxc4onxzijkxjr2dapqja5tg3a
+      private: no
+
+    - name: private_rt_id
+      prompt: Enter Private Route Table OCID
+      default: ocid1.routetable.oc1.ap-mumbai-1.aaaaaaaarq2mnvfjqzyznkl2yctjv6vpllxgd2md2cxrzngm3igayrtjytta
+      private: no
+
+    - name: ig_id
+      prompt: Enter Internet Gateway OCID
+      default: ocid1.internetgateway.oc1.ap-mumbai-1.aaaaaaaa7jxsquxks3mjkmcw4wbcadmbsllyaiurxocbaxtdwqgwyaygbbwa
+      private: no
+
+    - name: ng_id
+      prompt: Enter Nat Gateway OCID
+      default: ocid1.natgateway.oc1.ap-mumbai-1.aaaaaaaadndj2ojo3tcsw2hqkibxr4otbfmkxakvb7qtia7ivjvqncvkazvq
+      private: no
+
+  tasks:
+    # Task-01: Deleting the 2x Subnets
+    - name: Deleting the Public subnet
+      oci_network_subnet:
+        id: "{{ public_subnet_id }}"
+        state: absent
+    - name: Deleting the Private Subnet
+      oci_network_subnet:
+        id: "{{private_subnet_id}}"
+        state: absent
+
+    # Task-02: Deleting the 2x Security Lists
+    - name: Deleting the Public Security List
+      oci_network_security_list:
+        id: "{{ public_security_list_ocid }}"
+        state: absent
+    - name: Deleting the Private Security List
+      oci_network_security_list:
+        id: "{{private_security_list_ocid}}"
+        state: absent
+
+    # Task-03: Deleting the 2x Route Tables
+    - name: Deleting the Public Route Table
+      oci_network_route_table:
+        id: "{{ public_rt_id }}"
+        state: absent
+    - name: Deleting the Private Route Table
+      oci_network_route_table:
+        id: "{{private_rt_id}}"
+        state: absent
+
+    # Task-04: Deleting 2x Gateways
+    - name: Delete the Internet Gateway
+      oci_network_internet_gateway:
+        id: "{{ ig_id }}"
+        state: absent
+    - name: Deleting the NatGateway
+      oci_network_nat_gateway:
+        id: "{{ng_id}}"
+        state: absent
+
+    # Task-05: Deleting the VCN, the final part
+    - name: Delete the VCN
+      oci_network_vcn:
+        vcn_id: "{{ vcn_id }}"
+        state: absent

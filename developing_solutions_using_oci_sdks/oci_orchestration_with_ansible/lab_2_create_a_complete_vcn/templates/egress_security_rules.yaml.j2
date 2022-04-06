@@ -1,0 +1,10 @@
+---
+instance_egress_security_rules:
+  # Allow ssh connections outside
+  - destination: "{{ all_cidr_block }}"
+    protocol: "{{ tcp_protocol }}"
+    tcp_options:
+      destination_port_range:
+        min: {{ ssh_port }}
+        max: {{ ssh_port }}
+

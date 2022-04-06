@@ -1,0 +1,298 @@
+---
+- name: Setting Up the VCN in Oracle Cloud Infrastructure
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars:
+    # common networking definitions
+    # A. 0.0.0.0/0 and Protocols
+    all_cidr_block: "0.0.0.0/0"
+    all_protocol: "all"
+    tcp_protocol: "6"  # tcp
+    udp_protocol: "17" # udp
+    ssh_port: "22"
+    http_port: "80"
+
+    # Setting the Route Rules for Public and Private Route Tables
+    public_route_table_rules:
+      - cidr_block: "{{ all_cidr_block }}"
+        network_entity_id: "{{ ig_id }}"
+    private_route_table_rules:
+      - cidr_block: "{{all_cidr_block}}"
+        network_entity_id: "{{ng_id}}"
+
+
+  vars_prompt:
+    # VCN - 4x
+    - name: vcn_name
+      prompt: "Enter VCN Name"
+      default: "ansible-vcn"
+      private: no
+    - name: vcn_cidr_block
+      prompt: "Enter VCN CIDR Block"
+      default: "10.0.0.0/16"
+      private: no
+    - name: vcn_dns_label
+      prompt: "Enter VCN DNS Label"
+      default: "ansibledns"
+      private: no
+    - name: vcn_display_name
+      prompt: "Enter VCN Display Name"
+      default: "ansible-vcn"
+      private: no
+
+    # IGW - 1x
+    - name: ig_name
+      prompt: "Enter Internet Gateway Name"
+      default: "Internet Gateway"
+      private: no
+
+    # NGW - 1X
+    - name: ng_name
+      prompt: "Enter NatGateway Display Name"
+      default: "Nat Gateway"
+      private: no
+
+    # Route Table - 1x(default)+2x(Public and Private; RT Rules above at var section)
+    - name: public_route_table_name
+      prompt: "Enter Public Route Table Name"
+      default: "Public Route Table for Public Subnet"
+      private: no
+    - name: private_route_table_name
+      prompt: "Enter Private Route Table Name"
+      default: "Private Route Table for Private Subnet"
+      private: no
+
+    # 2x security lists: for Public and Private Subnet
+    # Public Security List
+    - name: public_securitylist_name
+      prompt: "Enter Public Security List Name"
+      default: "Security List for Public Subnet"
+      private: no
+
+    # Private Security List
+    - name: private_securitylist_name
+      prompt: "Enter Private Security List Name"
+      default: "Security List for Private Subnet"
+      private: no
+
+    # 2x Subnets
+    # Subnet - Public
+    - name: public_subnet_cidr
+      prompt: "Enter Public Subnet CIDR"
+      default: "10.0.0.0/24"
+      private: no
+    - name: public_subnet_name
+      prompt: "Enter Public Subnet Name"
+      default: "Public Subnet"
+      private: no
+    - name: public_subnet_dns_label
+      prompt: "Enter Public Subnet DNS Label"
+      default: "publicsubnet"
+      private: no
+
+    # Subnet - Private
+    - name: private_subnet_cidr
+      prompt: "Enter Private Subnet CIDR"
+      default: "10.0.1.0/24"
+      private: no
+    - name: private_subnet_name
+      prompt: "Enter Private Subnet Name"
+      default: "Private Subnet"
+      private: no
+    - name: private_subnet_dns_label
+      prompt: "Enter Private Subnet DNS Label"
+      default: "privatesubnet"
+      private: no
+
+
+    # AD and Compartment
+    - name: instance_ad
+      prompt: "Enter AD Name"
+      default: "oAOj:AP-MUMBAI-1-AD-1"
+      private: no
+
+    - name: instance_compartment
+      prompt: "Enter Your COMPARTMENT OCID"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+  tasks:
+    #======================================= PART-A: Create a Complete VCN ============================================
+    - name: Your Basic Operation Choice
+      debug:
+        msg: "You Have Chosen AD: {{instance_ad}} and Compartment: {{instance_compartment}}"
+
+    # Task 01: Create a new VCN with IP 11.0.0.0/16 with a default setup
+    # Defaults in a VCN: RT- 1x Default, SL- 1x Default, DHCP Option - 1x Default, Subnet - 0
+    # What we will create: 1xVCN, 1xIGW, 1xRT, 1xSL-(ingress/egress), 2xSubnet (Public and Private)
+    # ansible-doc oracle.oci.oci_network_vcn
+    - name: Creating a VCN
+      oci_network_vcn:
+        cidr_block: "{{vcn_cidr_block}}"
+        compartment_id: "{{instance_compartment}}"
+        display_name: "{{vcn_display_name}}"
+        dns_label: "{{vcn_dns_label}}"
+        state: present # default # means->create
+      register: result
+      tags: # tag the task to run it individually
+        - create_vcn
+    - set_fact:
+        vcn_id: "{{ result.vcn.id }}"
+
+    # Task 02: Create Gateways
+    # 2.1 Create an internet gateway which will be later attached to the default route table
+    # ansible-doc oracle.oci.oci_network_internet_gateway
+    - name: Create a new Internet Gateway
+      oci_network_internet_gateway:
+        compartment_id: "{{ instance_compartment }}"
+        vcn_id: "{{ vcn_id }}"
+        name: "{{ ig_name }}"
+        is_enabled: 'yes'
+        state: present
+      register: result
+    - set_fact:
+        ig_id: "{{ result.internet_gateway.id }}"
+
+    # 2.2 Create a Nat Gateway so that instances in private subnet can egress to internet, but no ingress
+    # Attach this NGW into a route rule for private subnet
+    - name: Create NAT Gateway
+      oci_network_nat_gateway:
+        compartment_id: "{{ instance_compartment }}"
+        vcn_id: "{{ vcn_id }}"
+        display_name: "{{ng_name}}"
+      register: result
+    - set_fact:
+        ng_id: "{{result.nat_gateway.id}}"
+
+    # Task 03: Create Route Tables
+    # 3.1 Public Route Table - IGW attached
+    # RT will be attached to Subnet --> when creating subnet
+    # ansible-doc oracle.oci.oci_network_route_table
+    - name: Create a Public route table to connect internet gateway to the VCN
+      oci_network_route_table:
+        compartment_id: "{{ instance_compartment }}"
+        vcn_id: "{{ vcn_id }}"
+        display_name: "{{ public_route_table_name }}"
+        route_rules: "{{ public_route_table_rules }}" #<<<--- RT Rules will be `set` at var section
+        state: present
+      register: result
+    - set_fact:
+        public_rt_id: "{{ result.route_table.id }}" # this rt_id will be used in public_subnet
+
+    # 3.2 Private Route Table - NGW attached
+    - name: Create a Private Route Table to connect NGW to VCN
+      oci_network_route_table:
+        compartment_id: "{{ instance_compartment }}"
+        vcn_id: "{{ vcn_id }}"
+        display_name: "{{private_route_table_name}}"
+        route_rules: "{{private_route_table_rules}}"
+        state: present
+      register: result
+    - set_fact:
+        private_rt_id: "{{result.route_table.id}}" # this rt_id will be used in private_subnet
+
+
+    # --------------------------------- SL Creation (STARTS) -----------------------------------------------------------
+    # Task 04: Create Security List
+    # SL will be attached to subnet --> when creating subnet
+    # Create a security list for allowing access to public instance
+    # Use a jinja2 template of the ingress and egress security rules to generate
+    # a templated version of the final rules.
+
+    # 4.1 Importing the Security List Preprocessing tasks
+    - import_tasks: sl_processor_pub_subnet.yml
+
+    # 4.2 Creating Security List for Public Subnet
+    # Read Doc: ansible-doc oracle.oci.oci_network_security_list
+    - name: Create a security list for allowing access to public instance
+      oci_network_security_list:
+        name: "{{ public_securitylist_name }}"
+        compartment_id: "{{ instance_compartment }}"
+        vcn_id: "{{ vcn_id }}"
+        ingress_security_rules: "{{ loaded_ingress.instance_ingress_security_rules }}"
+        egress_security_rules: "{{ loaded_egress.instance_egress_security_rules }}"
+        state: present
+      register: result
+    - set_fact:
+        public_security_list_ocid: "{{ result.security_list.id }}"
+
+    # 4.3 Create a security list for Private Subnet
+    - name: Create a Security List for Private Subnet
+      oci_network_security_list:
+        name: "{{private_securitylist_name}}"
+        compartment_id: "{{ instance_compartment }}"
+        vcn_id: "{{ vcn_id }}"
+        ingress_security_rules: # List
+          - source: "{{ all_cidr_block }}"
+            protocol: "{{ tcp_protocol }}"
+            tcp_options:
+              destination_port_range:
+                min: "{{http_port}}"
+                max: "{{http_port}}"
+        egress_security_rules: # List
+          - destination: "{{ all_cidr_block }}"
+            protocol: "{{ all_protocol }}"
+        state: present
+      register: result
+    - set_fact:
+        private_security_list_ocid: "{{result.security_list.id}}"
+
+
+    # Task 05: Create Subnet
+    # Link the RT and SL with the subnet
+    # ansible-doc oracle.oci.oci_network_subnet
+    # 5.1 Create Public Subnet
+    - name: Creating a Public Subnet. Link security_list and route_table.
+      oci_network_subnet:
+        availability_domain: "{{ instance_ad }}"
+        cidr_block: "{{ public_subnet_cidr }}"
+        compartment_id: "{{ instance_compartment }}"
+        display_name: "{{ public_subnet_name }}"
+        prohibit_public_ip_on_vnic: false # default: false; means VNICs created in this subnet will automatically be assigned public IP addresses unless specified otherwise during instance launch
+        route_table_id: "{{ public_rt_id }}"
+        security_list_ids: [ "{{ public_security_list_ocid }}" ] # A List
+        vcn_id: '{{ vcn_id }}'
+        dns_label: "{{ public_subnet_dns_label }}"
+      register: result
+    - set_fact:
+        public_subnet_id: "{{ result.subnet.id }}"
+
+    # 5.2 Create Private Subnet
+    - name: Creating a Private Subnet. Link security_list and route_table.
+      oci_network_subnet:
+        availability_domain: "{{ instance_ad }}"
+        cidr_block: "{{ private_subnet_cidr }}"
+        compartment_id: "{{ instance_compartment }}"
+        display_name: "{{ private_subnet_name }}"
+        prohibit_public_ip_on_vnic: true # default: false; means VNICs created in this subnet will automatically be assigned public IP addresses unless specified otherwise during instance launch
+        route_table_id: "{{ private_rt_id }}"
+        security_list_ids: [ "{{ private_security_list_ocid }}" ] # A List
+        vcn_id: '{{ vcn_id }}'
+        dns_label: "{{ private_subnet_dns_label }}"
+      register: result
+    - set_fact:
+        private_subnet_id: "{{ result.subnet.id }}"
+
+    # Task: Save all facts to host specific file
+    - name: Save all facts to host specific file
+      copy:
+        content: "OCI FACTS \n
+        VCN_NAME:{{vcn_name}}\n
+        VCN_ID:{{vcn_id}}\n
+        IGW_ID:{{ig_id}}\n
+        NGW_ID: {{ng_id}}\n
+        PUBLIC_RT_ID:{{public_rt_id}}\n
+        PRIVATE_RT_ID:{{private_rt_id}}\n
+        PUBLIC_SECURITY_LIST_OCID:{{public_security_list_ocid}}\n
+        PRIVATE_SECURITY_LIST_OCID:{{private_security_list_ocid}}\n
+        PUBLIC_SUBNET_ID:{{public_subnet_id}}\n
+        PRIVATE_SUBNET_ID:{{private_subnet_id}}"
+        dest: ./report.txt
+
+
+
+
+
+

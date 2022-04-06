@@ -1,0 +1,123 @@
+---
+- hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars:
+    ssh_key_filename: id_rsa_myproject
+
+  vars_prompt:
+    - name: instance_shape
+      prompt: "Enter Instance Shape:"
+      default: "VM.Standard2.1"
+      private: no
+
+    - name: instance_hostname
+      prompt: "Set your instance hostname:"
+      default: "ansibleinstance"
+      private: no
+
+    - name: instance_name
+      prompt: "Set your instance Name:"
+      default: "ansible-instance"
+      private: no
+
+    - name: instance_ad
+      prompt: "Enter AD Name:"
+      default: "oAOj:AP-MUMBAI-1-AD-1"
+      private: no
+
+    - name: instance_compartment
+      prompt: "Enter Your COMPARTMENT OCID:"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+
+    # find OL image ocids per region here: https://docs.cloud.oracle.com/iaas/images/image/501c6e22-4dc6-4e99-b045-cae47aae343f/
+    - name: instance_image
+      prompt: "Enter Instance Image ID: [Oracle-Linux-8.5-2022.01.24-0]"
+      default: "ocid1.image.oc1.ap-mumbai-1.aaaaaaaa64semv36x5gssmswplzkuirimzoapsvd4rh3s7sbdfev6fpkd6yq"
+      private: no
+
+    - name: instance_subnet_type
+      prompt: "Where you are planning to place your instance [public/private]: "
+      default: "public"
+      private: no
+
+    - name: instance_subnet_id  # oci-sandbox-vcn  # default is Public Subnet
+      prompt: "Instance Subnet ID:[Public/Private]:"
+      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaaiw4njnl74may6r4p3frgth5laqfr6kl6g52kkevolx43r2ugx7ra"
+      private: no
+
+    - name: user_data_file_location
+      prompt: "Set your user_data configuration script"
+      default: "./files/user_data.tpl"
+      private: no
+
+  tasks:
+    # Task-01: Generate the SSH keys of you dont supply the ssh-key for instance connectivity testing
+    - import_tasks: ssl_cert_generator.yml
+
+    # Task-02: Launch a Compute Instance in Oracle Cloud
+    # 2.1 Launching the instance with user input in Public/Private Subnet
+    - name: Launch an instance
+      oci_compute_instance:
+        availability_domain: "{{ instance_ad }}"
+        compartment_id: "{{ instance_compartment }}"
+        name: "{{instance_name}}"
+        image_id: "{{ instance_image }}"
+        shape: "{{ instance_shape }}"
+        create_vnic_details:
+            #assign_public_ip: True # Defaults to whether the subnet is public or private. Better not to set any value
+            hostname_label: "{{ instance_hostname }}"
+            subnet_id: "{{ instance_subnet_id }}"
+        metadata:
+            ssh_authorized_keys: "{{ SSH_AUTHORIZED_KEYS }}"
+            # install nginx webserver. Load the script from files/user_data.tpl
+            # Note: execution of user_data.tpl as cloud-init script might take a while and the nginx server might be alive after 5 mins.
+            # So, have patience. Even if the ansible script complete its execution, the user_data.tpl might still be running underneath.
+            user_data: "{{ lookup('file', user_data_file_location)| b64encode}}"
+      register: result
+
+
+    # 2.2 Print the instance details in console as debug
+    - name: Print instance details
+      debug:
+        msg: "Launched a new instance {{ result }}"
+    - set_fact:
+        instance_id: "{{result.instance.id }}"
+
+    # Task-03: Fetch the Public and Private IP of the instance
+    # This is a 3 step process
+    # i.   Get the VNIC attachment details of the instance
+    # ii.  Get the vnic_id of that vnic_attachment
+    # iii. Fetch the public ip of that vnic_id with which your instance is attached
+
+    # 3.1. Get the VNIC attachment details of the instance
+    - name: Get the VNIC attachment details of instance
+      oci_compute_vnic_attachment_facts:
+        compartment_id: "{{ instance_compartment }}"
+        instance_id: "{{ instance_id }}"
+      register: result
+
+    # 3.2 Get the vnic_id of that vnic_attachment
+    - name: Get details of the VNIC
+      oci_network_vnic_facts:
+        id: "{{ result.vnic_attachments[0].vnic_id }}"
+      register: result
+
+    - set_fact:
+        instance_private_ip: "{{result.vnic.private_ip}}"
+        instance_public_ip: "{{result.vnic.public_ip}}" # if a private instance, then <instance_public_ip> will be <null>
+
+    # 3.3 Fetch the private and public ip of that vnic_id with which your instance is attached
+    - name: Print the private and public ip of the newly launched instance
+      debug:
+        msg: "IP of launched instance-> Private IP: {{ instance_private_ip }}, Public IP: {{instance_public_ip}}"
+
+    # Task-04: SSH Connection Testing
+    - import_tasks: ssh_connection_testing.yml
+      when: instance_subnet_type == "public"
+
+    # Task 05: Save all facts to host specific file
+    - import_tasks: report_generator.yml
+

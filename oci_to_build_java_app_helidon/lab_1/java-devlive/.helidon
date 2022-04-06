@@ -1,0 +1,5 @@
+#Helidon Project Configuration
+#Mon Apr 04 23:58:38 PDT 2022
+helidon.version=2.4.2
+project.flavor=se
+project.directory=/home/jarotball/study/MyDevSecOps_Community/oci_developer/oci_to_build_java_app_helidon/lab_1/java-devlive

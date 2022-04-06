@@ -1,0 +1,6 @@
+conference/Main.class
+conference/SpeakerRepository.class
+conference/Speaker.class
+conference/Track.class
+conference/SpeakerService.class
+conference/Util.class

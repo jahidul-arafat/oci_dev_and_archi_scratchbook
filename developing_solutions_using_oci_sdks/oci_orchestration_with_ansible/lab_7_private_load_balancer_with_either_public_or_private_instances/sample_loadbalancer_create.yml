@@ -1,0 +1,165 @@
+---
+- name: Create a Private Load Balancer instance with either Public/Private Instances and Print the details
+  hosts: localhost
+  collections:
+    - oracle.oci
+
+  vars:
+    http_port: 80
+
+  vars_prompt:
+    # Set Load Balancer: Name, Shape, Backend Set (BS) name, BS policy
+    - name: lb_name
+      prompt: "Enter LoadBalancer Name:"
+      default: "ansible-sample-create-lb-lb"
+      private: no
+    - name: lb_shape
+      prompt: "Choose LoadBalancer Shape:"
+      default: "10Mbps"
+      private: no
+    - name: lb_backend_set_name
+      prompt: "Enter LB Backend Set Name:"
+      default: "ansible-sample-create-lb-BS"
+      private: no
+    - name: lb_backend_set_policy
+      prompt: "Choose LB Backend Set Policy (w-RR/ipHash/LC):"
+      default: "ROUND_ROBIN"
+      private: no
+
+    # Backend servers in the Backend Set
+    - name: backend_server_one_private_ip
+      prompt: "Enter Backend Server-01 Private IP: "
+      default: "10.0.0.161"
+      private: no
+    - name: backend_server_two_private_ip
+      prompt: "Enter Backend Server-02 Private IP: "
+      default: "10.0.0.244"
+      private: no
+
+
+    # Set the http and https listener name
+    - name: http_listener_name
+      prompt: "Set HTTP Listener name"
+      default: "ansible-sample-create-lb-http-listener"
+      private: no
+
+
+    # Set the Compartment of Operation i.e. sandbox
+    - name: compartment_id
+      prompt: "Enter Your COMPARTMENT OCID:"
+      default: "ocid1.compartment.oc1..aaaaaaaa5hplc4q67l76kzeygvcbbu73da3kxhndhogtfvxgwtpd2xzayecq" # sandbox compartment
+      private: no
+    - name: tenancy_ocid
+      prompt: "Enter Tenancy OCID"
+      default: "ocid1.tenancy.oc1..aaaaaaaanbynfzds6esghootofhfrbnahj3aeihhd7e3ghrn37cf452ywo3q"
+      private: no
+
+    - name: subnet_id_ad1 #oci-sandbox-vcn Private Subnet 10.0.1.0/24
+      prompt: "Enter Your Subnet OCID [Private]:"  #in Mumbai, there is only one AD. So even if there is a single AD, two different FDs can ensure fault tolerance
+      default: "ocid1.subnet.oc1.ap-mumbai-1.aaaaaaaabdv7xrearojddtrymajxhcgcdhpqbopwfi6i4h3adaro2537ersa"
+      private: no
+
+  tasks:
+    - block:
+      # Task-01: Create a Public Load Balancer.   << Error is creating the task. Service Limit + Internal Server Error.
+      # Debug the Error <<----------- [unsolved]
+      # Inputs: compt_ocid, lb_name, lb_shape, public_subnet_ocid
+      # return: lb.id lb.ip
+      - name: Create a Private Load Balancer
+        oci_loadbalancer_load_balancer:
+          is_private: yes # defaull is: null; If True, then the load_balancer will be internal to VCN and will not have any public_ip assigned
+          compartment_id: "{{compartment_id}}"
+          name: "{{lb_name}}"
+          shape_name: "{{lb_shape}}"
+          subnet_ids: #list # L[0]
+            - "{{subnet_id_ad1}}"
+          state: present
+        register: result
+      - debug:
+          msg: "Load Balancer Details: {{result.load_balancer}}"
+      - set_fact:
+          private_load_balancer_id: "{{result.load_balancer.id}}"
+          private_load_balancer_ip_addresses: "{{result.load_balancer.ip_addresses}}"  # this is a LIST
+
+      # Task-02: Create Backend set
+      # 3x tasks
+      # 2.1 Create a Backend set and name it and configure the health check policy
+      # input: lb_id, bs_name, bs_policy: RR, health_checker: {protocol, port, interval, timeout, retries, return_code, url_path, regex}
+      - name: Create Backend Set
+        oci_loadbalancer_backend_set:
+          load_balancer_id: "{{private_load_balancer_id}}"
+          name: "{{lb_backend_set_name}}"
+          policy: "{{lb_backend_set_policy}}" #round_robin
+          health_checker:
+            protocol: "HTTP"
+            port: "{{http_port}}"
+            interval_in_millis: 10000
+            timeout_in_millis: 3000
+            retries: 3
+            return_code: 200
+            url_path: "/"
+            response_body_regex: ".*"
+          state: present
+
+      # 2.2 Add 2x Backend Servers in Backend Set
+      # A. Add Backend server 01 into the Backend Set
+      - name: Add Backend Server 01 into the Backend Set
+        oci_loadbalancer_backend:
+          load_balancer_id: "{{private_load_balancer_id}}"
+          backend_set_name: "{{lb_backend_set_name}}"
+          ip_address: "{{backend_server_one_private_ip}}"
+          port: "{{http_port}}"
+          backup: False     # If True, LB will treat this server as backup unit and will not forward any ingress traffic to this backend unit
+          drain: False      # If True, LB will drain this server and server marked as `drain`, doesn't receive any ingress traffic
+          offline: False    # If True, LB will treat this server as offline and offline server doesn't receive any ingress traffic
+          weight: 1         # A server weighted `3` receives 3 times the number of connections as a server weighted `1`
+          state: present
+
+      # B. Add Backend Server 02 into the Backend Set
+      - name: Add Backend Server 02 into the Backend Set
+        oci_loadbalancer_backend:
+          load_balancer_id: "{{private_load_balancer_id}}"
+          backend_set_name: "{{lb_backend_set_name}}"
+          ip_address: "{{backend_server_two_private_ip}}"
+          port: "{{http_port}}"
+          backup: False
+          drain: False
+          offline: False
+          weight: 1
+          state: present
+
+      # Task-03: Configure Listener
+      # 3.1 Create Listener for HTTP traffic
+      - name: Create Listener for HTTP traffic
+        oci_loadbalancer_listener:
+          load_balancer_id: "{{private_load_balancer_id}}"
+          name: "{{http_listener_name}}"
+          default_backend_set_name: "{{lb_backend_set_name}}"
+          port: "{{http_port}}"
+          protocol: "HTTP"
+          connection_configuration:
+            idle_timeout: 300
+          state: present
+
+      # Task-04: Get the Load Balancer OCID, which we will use later to terminate the LB
+      - name: Print the Load Balancer OCID
+        debug:
+          msg: "Load Balancer OCID: {{private_load_balancer_id}} and Private IP: {{private_load_balancer_ip_addresses[0].ip_address}}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
