@@ -4,7 +4,8 @@ import json
 from get_instance_ip_info import get_instance_ip_addresses
 
 if __name__ == "__main__":
-    instance_id = input("Enter Compute Instance OCID: ") or "ocid1.instance.oc1.ap-mumbai-1.anrg6ljr2br7tayceiofoxcai7elcfsqusymsv763pa6kpt3ilrfw45tdsda"
+    instance_id = input("Enter Compute Instance OCID: ") or \
+                  "ocid1.instance.oc1.ap-mumbai-1.anrg6ljr2br7taycew6m5vjlrplgujvildrqdjpdkj7hq4brsje2me5w3iwq"
 
     # Default Config File and Profile
     config = oci.config.from_file()

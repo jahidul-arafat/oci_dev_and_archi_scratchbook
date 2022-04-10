@@ -94,7 +94,12 @@ def add_igw_to_default_rt_rule(virtual_network_client, virtual_network_composite
     print("{}".format(route_table.route_rules))
 
 
-# Create NSG
+# Create NSG - Network Security Gateway
+# Ref: https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/networksecuritygroups.htm
+# A network security group (NSG) provides a virtual firewall for a set of cloud resources that all have the same security posture.
+# Compared to security lists, NSGs let you separate your VCN's subnet architecture from your application security requirements
+# Unlike with security lists, the VCN does not have a default NSG. Also, each NSG you create is initially empty. It has no default security rules.
+
 def create_nsg(virtual_network_composite_operations, vcn):
     nsg_name = input("Enter NSG Name: ") or "oci_python_nsg"
     create_nsg_details = oci.core.models.CreateNetworkSecurityGroupDetails(
