@@ -1,0 +1,118 @@
+{
+    "returnCode": "Success",
+    "error": "",
+    "result": {
+        "txid": "7579166dd54d66fa05a3a65d470e40ab92a852907c48eaece060155274ecd2b3",
+        "payload": [
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:33:18.996556845 +0000 UTC",
+                "TxId": "fffc72bd5ac579160793f5a268a5672da59f0f5b6fe9e95527b1ba98586722e4",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "**a***",
+                    "GameId": "TheGame",
+                    "Used": "a",
+                    "WordToGuess": "planet"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:22:38.488742836 +0000 UTC",
+                "TxId": "4332f685d07952c4adc1fb7c90ea2c74aea5093e27c077b42e7bcf82c9dba486",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "******",
+                    "GameId": "TheGame",
+                    "Used": "",
+                    "WordToGuess": "planet"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:22:27.908284737 +0000 UTC",
+                "TxId": "75c25b04ff1cd4b90ace30777afb6ee6763301528f3a7afa930b762ae7e18934",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "******",
+                    "GameId": "TheGame",
+                    "Used": "",
+                    "WordToGuess": "school"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:21:50.350960011 +0000 UTC",
+                "TxId": "144d9ba2fe6d8b63f1bd402613faae607c167f1c712ba5c91ef25b70fcbacf79",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "****",
+                    "GameId": "TheGame",
+                    "Used": "",
+                    "WordToGuess": "bird"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:21:33.76666539 +0000 UTC",
+                "TxId": "15250d15b25197bcefe563656115bc2d3f8904188bea2863c1fa867a37183402",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "*****",
+                    "GameId": "TheGame",
+                    "Used": "",
+                    "WordToGuess": "smart"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:21:23.771721991 +0000 UTC",
+                "TxId": "7b611d08e36011d561c54c147a624e3d4440f39902c2f684940d47df3fc491b1",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "wor*",
+                    "GameId": "TheGame",
+                    "Used": "owr",
+                    "WordToGuess": "word"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:17:19.266633195 +0000 UTC",
+                "TxId": "c73391c0c3aad43ac98384e1b49d76c6e7975374d7e084098f7c50c82ed8fd5b",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "wo**",
+                    "GameId": "TheGame",
+                    "Used": "ow",
+                    "WordToGuess": "word"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:15:30.503444846 +0000 UTC",
+                "TxId": "25b6902bc75be1f8d94fbe8477946fbfe5a1495ff96af41b9a00fc0fad95a7b8",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "*o**",
+                    "GameId": "TheGame",
+                    "Used": "o",
+                    "WordToGuess": "word"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:04:50.128056724 +0000 UTC",
+                "TxId": "b3907ee4de69539f8781bc92db3967e95331b30f5ebf84e4409d5dcd0aea2bcb",
+                "Value": {
+                    "AssetType": "Game",
+                    "CurrentGuessState": "****",
+                    "GameId": "TheGame",
+                    "Used": "",
+                    "WordToGuess": "word"
+                }
+            }
+        ],
+        "encode": "JSON"
+    }
+}

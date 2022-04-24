@@ -1,0 +1,60 @@
+{
+    "returnCode": "Success",
+    "error": "",
+    "result": {
+        "txid": "8543052680da2e4b20b9d0c9b9d906289c75535493fad375dc5914430f26ad91",
+        "payload": [
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:21:33.76666539 +0000 UTC",
+                "TxId": "15250d15b25197bcefe563656115bc2d3f8904188bea2863c1fa867a37183402",
+                "Value": {
+                    "AssetType": "Player",
+                    "Score": 14,
+                    "UserId": "jahid"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:21:23.771721991 +0000 UTC",
+                "TxId": "7b611d08e36011d561c54c147a624e3d4440f39902c2f684940d47df3fc491b1",
+                "Value": {
+                    "AssetType": "Player",
+                    "Score": 13,
+                    "UserId": "jahid"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:17:19.266633195 +0000 UTC",
+                "TxId": "c73391c0c3aad43ac98384e1b49d76c6e7975374d7e084098f7c50c82ed8fd5b",
+                "Value": {
+                    "AssetType": "Player",
+                    "Score": 12,
+                    "UserId": "jahid"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:15:30.503444846 +0000 UTC",
+                "TxId": "25b6902bc75be1f8d94fbe8477946fbfe5a1495ff96af41b9a00fc0fad95a7b8",
+                "Value": {
+                    "AssetType": "Player",
+                    "Score": 11,
+                    "UserId": "jahid"
+                }
+            },
+            {
+                "IsDelete": "false",
+                "Timestamp": "2022-04-24 10:12:51.673904845 +0000 UTC",
+                "TxId": "ac2736b1f05d9491dbb0f11b7872d661e7f054361d997d9422e7bf237eb48eb7",
+                "Value": {
+                    "AssetType": "Player",
+                    "Score": 10,
+                    "UserId": "jahid"
+                }
+            }
+        ],
+        "encode": "JSON"
+    }
+}

@@ -1,0 +1,50 @@
+assets:                                             # Definition of Assets
+    - name: Player                                    # Asset 01: Player:: Information about the Player
+      properties:                                     # 2x Properties: <UserId>, <Score>
+          - name: UserId                                # Player unique identidfier (email)- Mandatory
+            type: string
+            mandatory: true 
+            id: true                                    # <id> property - means that we enforce it as a unique sort of identity of the object
+          - name: Score                                 # Player Score - Optional
+            type: number 
+            validate: positive()                        # We expect the score to be a positive number
+      methods:                                        # Operations those would be required
+        crud: [create, getById, update, delete]       # i.e. changes in the score
+        others: [getHistoryById]
+    - name: Game                                      # Asset 02: Game:: Information about the Game
+      properties:                                     # 4x Properties: <GameId>, <CurrentGuessState>, <WordToGuess>, <Used>
+          - name: GameId                                # Game unique Identifier  - Mandatory       
+            type: string 
+            mandatory: true 
+            id: true 
+          - name: CurrentGuessState                     # Current Guess State of the Game - Optional          
+            type: string 
+          - name: WordToGuess                           # The word to be guessed - Optional
+            type: string
+          - name: Used                                  # Already guessed characters from the word - Optional
+            type: string 
+      methods: 
+        crud: [create, getById, update, delete]
+        others: [getHistoryById]
+    - name: Guess                                     # Asset 03: Guess:: What user guesses
+      properties:
+          - name: GuessID
+            type: string 
+            id: true 
+            derived: 
+                strategy: concat 
+                format: ["GUESS#%t"]
+          - name: PlayerId                              # Player who is making the guess
+            type: string 
+            mandatory: true 
+          - name: GuessedCharacter                      # In addtition to the GuessedCharacter, <Guess> asset also need to refer to the Player (who made the guess)
+            type: string 
+            mandatory: true
+            validate: /^[A-Za-z]+$/
+      methods: 
+        crud: [create]
+        others: []
+customMethods:
+    - "startNewGame(words []string)"                          # Start new game
+    - "MakeAGuess(userId string, guessedCharacter string)"    # Make a guess; input: userId and charater they want to guess
+    - "revealWord(word string, used string)"                  # To show which characters were guessed
