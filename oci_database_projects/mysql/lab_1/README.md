@@ -1,4 +1,4 @@
-# MDS - MySQL Database Service, HeatWave and Machine Learning | HeatWave Advisor
+# Oracle Cloud Infrastructure| MDS - MySQL Database Service, HeatWave and Machine Learning | HeatWave Advisor
 **Core Ref:**
 - [x] https://blogs.oracle.com/mysql/post/using-mysql-database-service-in-oci-part-1
 - [x] https://blogs.oracle.com/mysql/post/using-mysql-database-service-in-oci-part-2
