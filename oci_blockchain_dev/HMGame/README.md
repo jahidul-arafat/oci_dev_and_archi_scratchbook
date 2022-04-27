@@ -1,5 +1,6 @@
 # Develop Hangman Game using Oracle Block Chain App Builder
-# Environment Setup
+## Step-01: Environment Setup
+### 1.1 VSCode
 
 
 ## Troubleshooting-01: Specification was failing to correctly generate the Chaincode
@@ -83,3 +84,95 @@ Ref: https://github.com/sap-tutorials/Tutorials/issues/4415?tdsourcetag=s_pctim_
 #** Node: shimtest will be deprecated soon.
 
 ```
+
+
+
+
+
+# Simulation with OBP at VSCode
+
+
+# Simulation with POSTMAN Restful API
+VSCode is pretty much doing the same thing, but hiding the mechanis of interaction from you to simplify the invocation and testing process. 
+## 01. Get the REST API Version
+```bash
+Method: Get
+URL: https://founder99403602-ocuocictrng30-phx.blockchain.ocp.oraclecloud.com:7443/restproxy/api/version
+Authorization: Basic Auth
+
+Response:
+{
+    "returnCode": "Success",
+    "error": "",
+    "result": "v2.0.0"
+}
+
+```
+
+## 02. Using ChainCode queries
+Note: ChainCode queries doesnt store anything in the ledge, means the transactions are not committed by the Peers but Endorsed (Validated by Peers)
+```bash
+A.
+Method: POST
+URL: https://founder99403602-ocuocictrng30-phx.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/hmgamechannel001/chaincode-queries
+Authorization: Basic Auth
+Body: raw
+{
+    "chaincode": "HMGameChainCode",
+    "args": ["MakeAGuess", "jahid", "l"]
+}
+
+Note: This will not make any commit as we are using queries instead of actual transaction. So Nothing is stored even if the "character matched".
+
+B. Verify that nothing has commited by the Peers as we have make queries instead of actual transactions. So BlockChain Ledge in the BlockChain Channel/Network has not stored anything
+Method: Post
+URL: https://founder99403602-ocuocictrng30-phx.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/hmgamechannel001/chaincode-queries
+Authorization: Basic Auth
+Body: raw
+{
+    "chaincode": "HMGameChainCode",
+    "args": ["TheGameHistoryById", "TheGame"]
+}
+
+# In the response, you will see that character 'l' is not stored in the ladge
+
+
+```
+
+## 03. Using ChainCode Transactions - Async
+Actual Transaction which is stories into the ledge means commit by the Peers.
+```bash
+Method: POST
+URL: https://founder99403602-ocuocictrng30-phx.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/hmgamechannel001/transactions
+Authorization: Basic Auth
+Body: raw
+{
+    "chaincode": "HMGameChainCode",
+    "args": ["MakeAGuess", "jahid","l"]
+}
+
+# This will only return the transaction id, not whats inside into the transaction. To See what's inside the transaction, try below
+
+Method: GET
+URL: https://founder99403602-ocuocictrng30-phx.blockchain.ocp.oraclecloud.com:7443/restproxy/api/v2/channels/hmgamechannel001/transactions/da7a61b3e4f1ea5cd83a5053691e473b1891d13519d1b8f4df801bb021b826cf
+Authorization: Basic Auth
+Body: raw
+{
+    "returnCode": "Success",
+    "error": "",
+    "result": {
+        "txid": "da7a61b3e4f1ea5cd83a5053691e473b1891d13519d1b8f4df801bb021b826cf",
+        "status": "valid",
+        "payload": "Character was already guessed a**mal",
+        "encode": "JSON"
+    }
+}
+
+# If you want the endorsement process to be triggered, use the transactions url and you will get back the transaction ID and then with that transaction ID, you can query the status of the transaction at a later point. 
+
+# We dont want endoresement to be instantinious. It may take some time because nodes(peers) have to come to the agreement. Hence our Block Chain Network or channel is simple having only two nodes or peers, the consunsus might not be lengthy. 
+
+# But image a larger network having lots of nodes. This may take certain time before they achieve endorsement. Thats why transaction is make to be async, so we get the transaction ID and it dont have to wait for the actual transcation contents which we may query later. 
+```
+
+
