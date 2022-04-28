@@ -90,6 +90,7 @@ Ref: https://docs.public.oneportal.content.oci.oraclecloud.com/en-us/iaas/tools/
   
 ```bash
 > sudo yum install -y mysql-community-client mysql-shell
+> mysqlsh version
 ```
 
 ###  4.1. <a name='Createadb_configfileatHOMEdirectory'></a>Create a db_config file at HOME directory
