@@ -8,13 +8,20 @@ Ref: https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysq
 
 
 ### Priliminary Checklist 01: Sanity Check before upgrading
+---
 - [x] There must be no tables that use obsolete data types or function. 
   - [ ] In-place upgrade to MySQL 8.0 is not supported if tables contain old temporal columns in pre-5.6.4 format (TIME,DATETIME,TIMESTAMP columns without support for fractional seconds precision). If your tables still use the old temporal column format, upgrade using `REPAIR TABLE` before attmpting an in-place upgrade ti MySQL 8.0
 - [ ] There must be no orphan .frm files
+  - [ ] If MySQL crashes in  the middle of an ALTER TABLE operation, you may end up with an orphaned temporary table inside the InnoDB tablespace. 
+  - [ ] What if you have deleted the `.frm` file from the temprary table, you can copy any other InnoDB `.frm` file to have that name and drop the table as simulated below.
+  - [ ] What if you see a `.frm` orphan file strating with `#` i.e. `#sql-f3be_1.frm` and you are trying to drop it using the command `drop table #sql-f3be_1.frm`, this will result an `table not found`. To resolve use drop table `#mysql50##sql-f3be_1.frm`. The trick here is to prefix the tablename with #mysql50# to prevent the server from escaping the hash mark and hyphen
+  - [ ] Ref: https://mariadb.com/resources/blog/get-rid-of-orphaned-innodb-temporary-tables-the-right-way/
 - [ ] Triggers must not have a missing or empty definer or an invalid creation context i.e.
   - [ ] character_set_client
   - [ ] collation_connection
   - [ ] Database collections 
+  
+  ---
 
 **Simulation**
 ```bash
@@ -74,6 +81,7 @@ sys.sys_config                                     Table is already up to date
 ---
 
 # Check if the following triggers or invalid context exists
+# Note: A database trigger is procedural code that is automatically executed in response to certain events on a particular table or view in a database.
 - [x] character_set_client
 - [x] collation_connection
 - [x] Database collections 
@@ -81,16 +89,54 @@ sys.sys_config                                     Table is already up to date
 > mysqlsh root@localhost --sql
 sql> use infomation_schema;
    > SHOW TRIGGERS\G 
+
+# Showing a particular trigger in a particular schema 
+sql> select * from information_schema.triggers where 
+information_schema.triggers.trigger_name like '%trigger_name%' and 
+information_schema.triggers.trigger_schema like '%data_base_name%'
+
+# Check if any orphan file exists into the innoDB tablespace
+## Where is the created MySQL database folder stored in Mac OSX?
+mysql> SELECT @@datadir,@@innodb_data_home_dir;
++--------------------------+------------------------+
+| @@datadir                | @@innodb_data_home_dir |
++--------------------------+------------------------+
+| /opt/homebrew/var/mysql/ | NULL                   |
++--------------------------+------------------------+
+1 row in set (0.00 sec)
+
+> ls /opt/homebrew/var/mysql 
+#ib_16384_0.dblwr			binlog.000010				jarotballs-MacBook-Pro.local.err
+#ib_16384_1.dblwr			binlog.index				jarotballs-MacBook-Pro.local.pid
+#innodb_temp				ca-key.pem				mysql
+auto.cnf				ca.pem					mysql.ibd
+binlog.000001				classicmodels				performance_schema
+binlog.000002				client-cert.pem				private_key.pem
+binlog.000003				client-key.pem				public_key.pem
+binlog.000004				demo					server-cert.pem
+binlog.000005				ib_buffer_pool				server-key.pem
+binlog.000006				ib_logfile0				sys
+binlog.000007				ib_logfile1				undo_001
+binlog.000008				ibdata1					undo_002
+binlog.000009				ibtmp1
+
+# What if you have already deleted the .frm table from the directory and the database still showing show. You have to drop it inside from database either. Solution is ..
+mysql > cp t1.frm "#sql-f3db_2.frm"
+      > drop table `#mysql50##sql-f3db_2`;
+# And on the server reboot, you should be free of those annoying message.
+
 ```
 
 ### Priliminary Checklist 02: Is any of your tables having non-native storage engines?
 - [x] There must be no partition tables that use a storage engine that does not have native partitioning support.
 - [ ] If you have any storage engine other than native partitioned support,, how to alter those to native storage engine.
 - [ ] What if you have a storage engine having `MyISAM` tables and you need to convert those to `InnoDB`
+- [ ] There must be no tables in the MySQL 5.7 mysql system database that have the same name as a table used by the MySQL 8.0 data dictionary
+- [ ] There must be no tables that have foreign key constraint names longer than 64 characters
 
 **Simulation**
 ```bash
-# Lets find out whether exisiting database having any storage enginer other than the native partition support
+# Lets find out whether exisiting database having any storage enginer other than the native partition support or in partitioned. 
 > mysqlsh root@localhost --sql
 sql> SELECT TABLE_SCHEMA, TABLE_NAME
 FROM INFORMATION_SCHEMA.TABLES
@@ -98,7 +144,49 @@ WHERE ENGINE NOT IN ('innodb', 'ndbcluster')
 AND CREATE_OPTIONS LIKE '%partitioned%';
 
 # Say, you have a storage engine other than native support and you want to alter theat to INNODB
-> alter table table_name ENGINE = INNODB;
+sql> alter table table_name ENGINE = INNODB;
+
+# To make a partitioned table non-partitoned
+sql> alter tbale table_name REMOVE PARTITIONING;
+
+# There must be no tables in the MySQL 5.7 mysql system database that have the same name as a table used by the MySQL 8.0 data dictionary. To identify tables with those names, execute this query:
+# Any tables reported by the query must be dropped or renamed (use RENAME TABLE). This may also entail changes to applications that use the affected tables.
+sql> SELECT TABLE_SCHEMA, TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE LOWER(TABLE_SCHEMA) = 'mysql'
+and LOWER(TABLE_NAME) IN
+(
+'catalogs',
+'character_sets',
+'check_constraints',
+'collations',
+'column_statistics',
+'column_type_elements',
+'columns',
+'dd_properties',
+'events',
+'foreign_key_column_usage',
+'foreign_keys',
+'index_column_usage',
+'index_partitions',
+'index_stats',
+'indexes',
+'parameter_type_elements',
+'parameters',
+'resource_groups',
+'routines',
+'schemata',
+'st_spatial_reference_systems',
+'table_partition_values',
+'table_partitions',
+'table_stats',
+'tables',
+'tablespace_files',
+'tablespaces',
+'triggers',
+'view_routine_usage',
+'view_table_usage'
+);
 ```
 
 ### Priliminary Checklist 06: changes in views
