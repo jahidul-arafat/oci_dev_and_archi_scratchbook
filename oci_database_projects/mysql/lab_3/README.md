@@ -1,4 +1,4 @@
-# Migrating MySQL 5.7 to Mysql 8
+# Migrating MySQL 5.7 to MySQL 8 | Challenges
 ## CheckList
 Ref: https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysql-8
 
