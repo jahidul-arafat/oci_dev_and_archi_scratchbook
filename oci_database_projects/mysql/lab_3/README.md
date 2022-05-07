@@ -12,7 +12,7 @@ MySQL 5.6 to 5.7 Migration
   - [ ] session_variables
 
 ### Problem-01: view global_variables is not avaibale in information_schema rather switched to performance_schema database in MySQL 5.7 and MySQL 8
-**Impact:** This issue can hot monitoring and trending system which may use those queries to collect MySQL metrics.
+**Impact:** This issue can hit monitoring and trending system which may use those queries to collect MySQL metrics.
 
 **Simulation:**
 ```bash
@@ -40,7 +40,7 @@ sql> select count(*) from performance_schema.global_variables;
 ```
 
 ### Problem-02: SQL Modes
-- [x] With MySQL 5.7, STRICY_TRANS_TABLES mode is used by default. 
+- [x] With MySQL 5.7, STRICT_TRANS_TABLES mode is used by default. 
   - [ ] This makes MYSQL behavior much less forgiving when it comes to handling invalid data like zeroed date or skipping column in IN SERT when column doesn't have an explicit DEFAULT value. 
   - [ ] So, this is for the application to make sure ensuring 'good practices'
 
