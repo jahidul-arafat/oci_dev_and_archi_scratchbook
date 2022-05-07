@@ -2,17 +2,113 @@
 ## CheckList
 Ref: https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysql-8
 
-### Checklist:
-MySQL 5.6 to 5.7 Migration
+### Introduction:
 - [x] For all of you who use MySQL 5.6, make sure you upgrade it to MySQL 5.7 first and then eventually to MySQL 8.0 
-- [ ] Information schema changes: Some of the views which were stored in the information_schema are not supported in MySQL 5.7
+- [x] However, always note that migration is a one-way ticket. Once the upgrade is complte, there is no coming back. If you are plannign to migrate the MySQL 5.7 to MySQL 8.0, make sure to take a backup of your database directly before upgrade. 
+
+
+### Priliminary Checklist 01: Sanity Check before upgrading
+- [x] There must be no tables that use obsolete data types or function. 
+  - [ ] In-place upgrade to MySQL 8.0 is not supported if tables contain old temporal columns in pre-5.6.4 format (TIME,DATETIME,TIMESTAMP columns without support for fractional seconds precision). If your tables still use the old temporal column format, upgrade using `REPAIR TABLE` before attmpting an in-place upgrade ti MySQL 8.0
+- [ ] There must be no orphan .frm files
+- [ ] Triggers must not have a missing or empty definer or an invalid creation context i.e.
+  - [ ] character_set_client
+  - [ ] collation_connection
+  - [ ] Database collections 
+
+**Simulation**
+```bash
+# Before you attempt anything, you should double-check that your existing MySQL 5.7 setup ticks all the boxes on the sanity checklist before upgrtading to MySQL 8.0
+> mysqlcheck -u root -p --all-databases --check-upgrade
+# If mysqlcheck reports any error, correct the issues;
+---
+classicmodels.customers                            Table is already up to date
+classicmodels.employees                            Table is already up to date
+classicmodels.offices                              Table is already up to date
+classicmodels.orderdetails                         Table is already up to date
+classicmodels.orders                               Table is already up to date
+classicmodels.payments                             Table is already up to date
+classicmodels.productlines                         Table is already up to date
+classicmodels.products                             Table is already up to date
+demo.t1                                            Table is already up to date
+demo.t2                                            Table is already up to date
+demo.t3                                            Table is already up to date
+mysql.columns_priv                                 Table is already up to date
+mysql.component                                    Table is already up to date
+mysql.db                                           Table is already up to date
+mysql.default_roles                                Table is already up to date
+mysql.engine_cost                                  Table is already up to date
+mysql.func                                         Table is already up to date
+mysql.general_log                                  Table is already up to date
+mysql.global_grants                                Table is already up to date
+mysql.gtid_executed                                Table is already up to date
+mysql.help_category                                Table is already up to date
+mysql.help_keyword                                 Table is already up to date
+mysql.help_relation                                Table is already up to date
+mysql.help_topic                                   Table is already up to date
+mysql.innodb_index_stats                           Table is already up to date
+mysql.innodb_table_stats                           Table is already up to date
+mysql.password_history                             Table is already up to date
+mysql.plugin                                       Table is already up to date
+mysql.procs_priv                                   Table is already up to date
+mysql.proxies_priv                                 Table is already up to date
+mysql.replication_asynchronous_connection_failover Table is already up to date
+mysql.replication_asynchronous_connection_failover_managed Table is already up to date
+mysql.replication_group_configuration_version      Table is already up to date
+mysql.replication_group_member_actions             Table is already up to date
+mysql.role_edges                                   Table is already up to date
+mysql.server_cost                                  Table is already up to date
+mysql.servers                                      Table is already up to date
+mysql.slave_master_info                            Table is already up to date
+mysql.slave_relay_log_info                         Table is already up to date
+mysql.slave_worker_info                            Table is already up to date
+mysql.slow_log                                     Table is already up to date
+mysql.tables_priv                                  Table is already up to date
+mysql.time_zone                                    Table is already up to date
+mysql.time_zone_leap_second                        Table is already up to date
+mysql.time_zone_name                               Table is already up to date
+mysql.time_zone_transition                         Table is already up to date
+mysql.time_zone_transition_type                    Table is already up to date
+mysql.user                                         Table is already up to date
+sys.sys_config                                     Table is already up to date
+---
+
+# Check if the following triggers or invalid context exists
+- [x] character_set_client
+- [x] collation_connection
+- [x] Database collections 
+
+> mysqlsh root@localhost --sql
+sql> use infomation_schema;
+   > SHOW TRIGGERS\G 
+```
+
+### Priliminary Checklist 02: Is any of your tables having non-native storage engines?
+- [x] There must be no partition tables that use a storage engine that does not have native partitioning support.
+- [ ] If you have any storage engine other than native partitioned support,, how to alter those to native storage engine.
+- [ ] What if you have a storage engine having `MyISAM` tables and you need to convert those to `InnoDB`
+
+**Simulation**
+```bash
+# Lets find out whether exisiting database having any storage enginer other than the native partition support
+> mysqlsh root@localhost --sql
+sql> SELECT TABLE_SCHEMA, TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE ENGINE NOT IN ('innodb', 'ndbcluster')
+AND CREATE_OPTIONS LIKE '%partitioned%';
+
+# Say, you have a storage engine other than native support and you want to alter theat to INNODB
+> alter table table_name ENGINE = INNODB;
+```
+
+### Priliminary Checklist 06: changes in views
+- [x] Information schema changes: Some of the views which were stored in the information_schema are not supported in MySQL 5.7
   - [ ] global_status
   - [ ] session_status
   - [ ] global_variables
   - [ ] session_variables
-
-### Problem-01: view global_variables is not avaibale in information_schema rather switched to performance_schema database in MySQL 5.7 and MySQL 8
-**Impact:** This issue can hit monitoring and trending system which may use those queries to collect MySQL metrics.
+- [x] view `global_variables` is not avaibale in information_schema rather switched to performance_schema database in MySQL 5.7 and MySQL 8
+- [ ] **Impact:** This issue can hit monitoring and trending system which may use those queries to collect MySQL metrics.
 
 **Simulation:**
 ```bash
@@ -39,7 +135,7 @@ sql> select count(*) from performance_schema.global_variables;
 1 row in set (0.0071 sec)
 ```
 
-### Problem-02: SQL Modes
+### Priliminary Checklist 07: SQL Modes
 - [x] With MySQL 5.7, STRICT_TRANS_TABLES mode is used by default. 
   - [ ] This makes MYSQL behavior much less forgiving when it comes to handling invalid data like zeroed date or skipping column in IN SERT when column doesn't have an explicit DEFAULT value. 
   - [ ] So, this is for the application to make sure ensuring 'good practices'
@@ -64,12 +160,12 @@ sql > set global sql_mode=''; or
 
 ```
 
-### Problem-03: Authentication Changes
-- [x] Password column has been removed and all authentication data alonfg with passowrds, have been moved to the 'authentication_string'
+### Priliminary Checklist 08: Authentication Changes
+- [x] Password column has been removed and all authentication data along with passowrds, have been moved to the 'authentication_string'
 - [x] Meantime, in MySQL 5.7 anmd MySQl 8.0, the 'plugin' column has to be non-empty, otherwise the account will be disabled.
-- [x] Both MySQL 5.7 and 8.0 has password_expired which was not there in 5.6. This is a great way to achieve a better level of security, where tyou can force periodic password changes on users. 
+- [x] Both MySQL 5.7 and 8.0 has password_expired which was not there in 5.6. This is a great way to achieve a better level of security, where you can force periodic password changes on users. 
   - [x] But this introduced some undesired side effects after an upgrade. 
-  - [x] Password expiration data is sotred in the mysql.user table in passowrd_lifetime cloumn. 
+  - [x] Password expiration data is stored in the mysql.user table in passowrd_lifetime cloumn. 
   - [x] When we perform an upgrade to MySQL 5.7, this column is set to NULL, means there's no per-user setting in use. Earlier in MySQL 5.7 after the upgrade the default_password_lifetime was set to 360 days which had some disadvantages. But later in MySQL 5.7.11, the default_password_lifewtime defaults to 0
 ![test](./mysql_auth_changes.png)
 
@@ -96,7 +192,7 @@ sql > SHOW GLOBAL VARIABLES LIKE 'default_password_lifetime';
     | default_password_lifetime | 180   |
     +---------------------------+-------+
 
-# Now suppose 180 days passed and all youe account in  newly upgraded MySQL 5.7 has expired. Now if you try to query, this supposed to fail. Lets see
+# Now suppose 180 days passed and all your account in  newly upgraded MySQL 5.7 has expired. Now if you try to query, this supposed to fail. Lets see
 sql > select 1;
 ERROR 1820 (HY000): You must reset your password using ALTER
 USER statement before executing this statement.
@@ -108,13 +204,17 @@ sql > ALTER USER demouser@localhost PASSWORD EXPIRE INTERVAL 10 DAY; or
 
 ```
 
-### Problem-04: Changes in InnoDB
+### Priliminary Checklist: Other Changes in InnoDB
 Ref: https://dev.mysql.com/doc/refman/5.7/en/innodb-row-format.html
-- [x] A cule of chnages intrduced in MySQl 5.7 affect the InnDB enginer.
+- [x] A couple of changes introduced in MySQl 5.7 affect the InnoDB enginer.
 - [ ] Both redo log and undd log format changed a little bit between 5.6 and 5.7 
 - [ ] Use innodb_fast_shutdown=0 when stopping the previous MySQL version to ensure all data as been flushed correctly before attempt the uprade.
 - [ ] With MySQL 5.7, the default row  format has changed to DYNAMIC. If you want to retain the previous COMPACT format as default one, you need to make chnages in MYSQL configuration (innodb_default_row_format).
 - [ ] Valid innodb_default_row_format options include DYNAMIC, COMPACT, and REDUNDANT.
+- [ ] Other Changes: 
+  - [ ] YEAR(2) format --> YEAR(4) format. However, mysql_upgrade will handdle this conversion automatically. 
+  - [ ] What if you want to use usser-defined locks in your application. Earlier (i.e. before MySQL 5.7
+  - [ ] )
 
 ```bash
 # Check the defaull row format; For MySQL 5.7 and 8 this should be 'DYNAMIC'
