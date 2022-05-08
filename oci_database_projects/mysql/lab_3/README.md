@@ -1,7 +1,9 @@
 # Migrating MySQL 5.7 to MySQL 8 | Challenges
 ## References
-- [x] https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysql-8
+- [x] Tips for Upgrading to from MySQL 5.7 to MySQL 8: https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysql-8
 - [ ] Upgrade prerequisites: https://dev.mysql.com/doc/refman/8.0/en/upgrade-prerequisites.html
+- [ ] Changes in MySQL 8.0: https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-server-changes
+- [ ] Download MySQL CE: https://dev.mysql.com/downloads/mysql/
 
 ## Introduction:
 - [x] For all of you who use MySQL 5.6, make sure you upgrade it to MySQL 5.7 first and then eventually to MySQL 8.0 
@@ -17,27 +19,8 @@
   - [ ] Read More at [here](https://dev.mysql.com/doc/refman/8.0/en/mysql-nutshell.html#mysql-nutshell-removals).
 - [ ] Server and Status Variables and Options Added, Deprecated, or Removed in MySQL 8.0. Click [here](https://dev.mysql.com/doc/refman/8.0/en/added-deprecated-removed.html) for details.
 
-## Checklists
-### Checklist 01: Sanity Check before upgrading
-#### 1.1 Any Obsolete DataType ?
-- [x] There must be no tables that use obsolet data types or function. 
-  - [ ] In-place upgrade to MySQL 8.0 is not supported if tables contain old temporal columns in pre-5.6.4 format (TIME,DATETIME,TIMESTAMP columns without support for fractional seconds precision). If your tables still use the old temporal column format, upgrade using `REPAIR TABLE` before attmpting an in-place upgrade ti MySQL 8.0
-
-#### 1.2  No orphan file
-- [ ] There must be no orphan .frm files
-- [ ] If MySQL crashes in  the middle of an ALTER TABLE operation, you may end up with an orphaned temporary table inside the InnoDB tablespace. 
-- [ ] What if you have deleted the `.frm` file from the temprary table, you can copy any other InnoDB `.frm` file to have that name and drop the table as simulated below.
-- [ ] What if you see a `.frm` orphan file strating with `#` i.e. `#sql-f3be_1.frm` and you are trying to drop it using the command `drop table #sql-f3be_1.frm`, this will result an `table not found`. To resolve use drop table `#mysql50##sql-f3be_1.frm`. The trick here is to prefix the tablename with #mysql50# to prevent the server from escaping the hash mark and hyphen
-- [ ] Ref: https://mariadb.com/resources/blog/get-rid-of-orphaned-innodb-temporary-tables-the-right-way/
-
-#### 1.3 Empty Definers in Triggers !
-- [ ] Triggers must not have a missing or empty definer or an invalid creation context i.e.
-  - [ ] character_set_client
-  - [ ] collation_connection
-  - [ ] Database collections 
-  
-
-#### Simulation
+## Sanity Checking Tools
+### Sanity Checking Tool 01: mysqlcheck
 ```bash
 # Before you attempt anything, you should double-check that your existing MySQL 5.7 setup ticks all the boxes on the sanity checklist before upgrtading to MySQL 8.0
 > mysqlcheck -u root -p --all-databases --check-upgrade
@@ -93,7 +76,264 @@ mysql.time_zone_transition_type                    Table is already up to date
 mysql.user                                         Table is already up to date
 sys.sys_config                                     Table is already up to date
 ---
+```
 
+### Sanity Checking Tool 02: util.checkForServerUpgrade()
+- [x] You can use the upgrade checker utility to check MySQL 5.7 server instances, and MySQL 8.0 server instances at another GA (General Availability) status release within the MySQL 8.0 release series, for compatibility errors and issues for upgrading.
+- [ ] If you invoke checkForServerUpgrade() without specifying a MySQL Server instance, the instance currently connected to the global session is checked.
+- [x] When you invoke the upgrade checker utility, MySQL Shell connects to the server instance and tests the settings described at [Preparing Your Installation for Upgrade](https://dev.mysql.com/doc/refman/8.0/en/upgrade-prerequisites.html).
+- [x] Ref: https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-upgrade.html
+
+
+> The upgrade checker utility does not support checking MySQL Server instances at a version earlier than MySQL 5.7.
+> 
+> MySQL Server only supports upgrade between GA releases. Upgrades from non-GA releases of MySQL 5.7 or 8.0 are not supported.
+
+#### Simulation
+
+```bash
+# To see the currently connected instance\
+> mysqlsh root@localhost 
+JS > \status
+MySQL Shell version 8.0.29
+
+Connection Id:                11
+Default schema:               
+Current schema:               
+Current user:                 root@localhost
+SSL:                          Cipher in use: TLS_AES_256_GCM_SHA384 TLSv1.3
+Using delimiter:              ;
+Server version:               8.0.28 Homebrew
+Protocol version:             X protocol
+Client library:               8.0.29
+Connection:                   localhost via TCP/IP
+TCP port:                     33060
+Server characterset:          utf8mb4
+Schema characterset:          utf8mb4
+Client characterset:          utf8mb4
+Conn. characterset:           utf8mb4
+Result characterset:          utf8mb4
+Compression:                  Enabled (DEFLATE_STREAM)
+Uptime:                       5 hours 9 min 16.0000 sec
+
+JS  > util.help("checkForServerUpgrade")
+
+JS  > util.checkForServerUpgrade()
+---
+The MySQL server at localhost:33060, version 8.0.28 - Homebrew, will now be
+checked for compatibility issues for upgrade to MySQL 8.0.29...
+
+1) Issues reported by 'check table x for upgrade' command
+  No issues found
+
+Errors:   0
+Warnings: 0
+Notices:  0
+
+No known compatibility errors or issues were found.
+---
+
+JS  > util.checkForServerUpgrade('root@localhost:3306',{"password":"XXXX","outputFormat":"JSON"})
+    > util.checkForServerUpgrade('root@localhost:3306',{"password":"XXXX","outputFormat":"JSON", "targetVersion":"8.0.29"})
+    > util.checkForServerUpgrade('root@localhost:3306',{"password":"XXXX","outputFormat":"JSON", "targetVersion":"8.0.29"})
+    > util.checkForServerUpgrade('root@localhost:3306',{"password":"XXXX","outputFormat":"JSON", "targetVersion":"8.0.29", "configPath":"/opt/homebrew/etc/my.cnf"})
+
+# Using mysqlsh command interface
+> mysqlsh -- util checkForServerUpgrade root@localhost:3306 --target-version=8.0.29\ 
+--output-format=JSON \
+--config-path=/opt/homebrew/etc/my.cnf
+
+```
+
+#### What would upgrade check suggestions would look like?
+
+```text
+# A Sample of upgrade suggestions would looks like. Its not in my case, as I already have the latest version of MySQL 8.0.29
+
+The MySQL server at example.com:3306, version
+5.7.33-enterprise-commercial-advanced - MySQL Enterprise Server - Advanced Edition (Commercial),
+will now be checked for compatibility issues for upgrade to MySQL 8.0.29...
+
+1) Usage of old temporal type
+  No issues found
+
+2) Usage of db objects with names conflicting with new reserved keywords
+  Warning: The following objects have names that conflict with new reserved keywords. 
+  Ensure queries sent by your applications use `quotes` when referring to them or they will result in errors.
+  More information: https://dev.mysql.com/doc/refman/en/keywords.html
+
+  dbtest.System - Table name
+  dbtest.System.JSON_TABLE - Column name
+  dbtest.System.cube - Column name
+
+3) Usage of utf8mb3 charset
+  Warning: The following objects use the utf8mb3 character set. It is recommended to convert them to use 
+  utf8mb4 instead, for improved Unicode support.
+  More information: https://dev.mysql.com/doc/refman/8.0/en/charset-unicode-utf8mb3.html 
+ 
+  dbtest.view1.col1 - column's default character set: utf8 
+
+4) Table names in the mysql schema conflicting with new tables in 8.0
+  No issues found
+
+5) Partitioned tables using engines with non native partitioning
+  Error: In MySQL 8.0 storage engine is responsible for providing its own
+  partitioning handler, and the MySQL server no longer provides generic
+  partitioning support. InnoDB and NDB are the only storage engines that
+  provide a native partitioning handler that is supported in MySQL 8.0. A
+  partitioned table using any other storage engine must be altered—either to
+  convert it to InnoDB or NDB, or to remove its partitioning—before upgrading
+  the server, else it cannot be used afterwards.
+  More information:
+    https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-configuration-changes
+
+  dbtest.part1_hash - MyISAM engine does not support native partitioning
+
+6) Foreign key constraint names longer than 64 characters
+  No issues found
+
+7) Usage of obsolete MAXDB sql_mode flag
+  No issues found
+
+8) Usage of obsolete sql_mode flags
+  No issues found
+
+9) ENUM/SET column definitions containing elements longer than 255 characters 
+  No issues found
+
+10) Usage of partitioned tables in shared tablespaces
+  Error: The following tables have partitions in shared tablespaces. Before upgrading to 8.0 they need 
+  to be moved to file-per-table tablespace. You can do this by running query like 
+  'ALTER TABLE table_name REORGANIZE PARTITION X INTO 
+    (PARTITION X VALUES LESS THAN (30) TABLESPACE=innodb_file_per_table);'
+  More information: https://dev.mysql.com/doc/refman/8.0/en/mysql-nutshell.html#mysql-nutshell-removals
+
+  dbtest.table1 - Partition p0 is in shared tablespace tbsp4
+  dbtest.table1 - Partition p1 is in shared tablespace tbsp4 
+
+11) Circular directory references in tablespace data file paths
+  No issues found
+
+12) Usage of removed functions
+  Error: Following DB objects make use of functions that have been removed in
+    version 8.0. Please make sure to update them to use supported alternatives
+    before upgrade.
+  More information:
+    https://dev.mysql.com/doc/refman/8.0/en/mysql-nutshell.html#mysql-nutshell-removals
+
+  dbtest.view1 - VIEW uses removed function PASSWORD
+
+13) Usage of removed GROUP BY ASC/DESC syntax 
+  Error: The following DB objects use removed GROUP BY ASC/DESC syntax. They need to be altered so that 
+  ASC/DESC keyword is removed from GROUP BY clause and placed in appropriate ORDER BY clause.
+  More information: https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-13.html#mysqld-8-0-13-sql-syntax 
+
+  dbtest.view1 - VIEW uses removed GROUP BY DESC syntax
+  dbtest.func1 - FUNCTION uses removed GROUP BY ASC syntax 
+
+14) Removed system variables for error logging to the system log configuration
+  No issues found
+
+15) Removed system variables
+  Error: Following system variables that were detected as being used will be
+    removed. Please update your system to not rely on them before the upgrade.
+  More information: https://dev.mysql.com/doc/refman/8.0/en/added-deprecated-removed.html#optvars-removed
+
+  log_builtin_as_identified_by_password - is set and will be removed
+  show_compatibility_56 - is set and will be removed
+
+16) System variables with new default values
+  Warning: Following system variables that are not defined in your
+    configuration file will have new default values. Please review if you rely on
+    their current values and if so define them before performing upgrade.
+  More information: https://mysqlserverteam.com/new-defaults-in-mysql-8-0/
+
+  back_log - default value will change
+  character_set_server - default value will change from latin1 to utf8mb4
+  collation_server - default value will change from latin1_swedish_ci to
+    utf8mb4_0900_ai_ci
+  event_scheduler - default value will change from OFF to ON
+[...]
+
+17) Zero Date, Datetime, and Timestamp values
+  Warning: By default zero date/datetime/timestamp values are no longer allowed
+    in MySQL, as of 5.7.8 NO_ZERO_IN_DATE and NO_ZERO_DATE are included in
+    SQL_MODE by default. These modes should be used with strict mode as they will
+    be merged with strict mode in a future release. If you do not include these
+    modes in your SQL_MODE setting, you are able to insert
+    date/datetime/timestamp values that contain zeros. It is strongly advised to
+    replace zero values with valid ones, as they may not work correctly in the
+    future.
+  More information:
+    https://lefred.be/content/mysql-8-0-and-wrong-dates/
+
+  global.sql_mode - does not contain either NO_ZERO_DATE or NO_ZERO_IN_DATE
+    which allows insertion of zero dates
+  session.sql_mode -  of 2 session(s) does not contain either NO_ZERO_DATE or
+    NO_ZERO_IN_DATE which allows insertion of zero dates
+  dbtest.date1.d - column has zero default value: 0000-00-00
+
+18) Schema inconsistencies resulting from file removal or corruption
+  No issues found
+
+19) Tables recognized by InnoDB that belong to a different engine
+  No issues found
+
+20) Issues reported by 'check table x for upgrade' command
+  No issues found
+
+21) New default authentication plugin considerations
+  Warning: The new default authentication plugin 'caching_sha2_password' offers
+    more secure password hashing than previously used 'mysql_native_password'
+    (and consequent improved client connection authentication). However, it also
+    has compatibility implications that may affect existing MySQL installations. 
+    If your MySQL installation must serve pre-8.0 clients and you encounter
+    compatibility issues after upgrading, the simplest way to address those
+    issues is to reconfigure the server to revert to the previous default
+    authentication plugin (mysql_native_password). For example, use these lines
+    in the server option file:
+    
+    [mysqld]
+    default_authentication_plugin=mysql_native_password
+    
+    However, the setting should be viewed as temporary, not as a long term or
+    permanent solution, because it causes new accounts created with the setting
+    in effect to forego the improved authentication security.
+    If you are using replication please take time to understand how the
+    authentication plugin changes may impact you.
+  More information:
+    https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password-compatibility-issues
+    https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password-replication
+
+Errors:   7
+Warnings: 36
+Notices:  0
+
+7 errors were found. Please correct these issues before upgrading to avoid compatibility issues.
+```
+
+## What Does these Sanity Checking Tools Really Checks? | Checklists
+### Checklist Item 01: Sanity Check before upgrading
+#### 1.1 Any Obsolete DataType ?
+- [x] There must be no tables that use obsolet data types or function. 
+  - [ ] In-place upgrade to MySQL 8.0 is not supported if tables contain old temporal columns in pre-5.6.4 format (TIME,DATETIME,TIMESTAMP columns without support for fractional seconds precision). If your tables still use the old temporal column format, upgrade using `REPAIR TABLE` before attmpting an in-place upgrade ti MySQL 8.0
+
+#### 1.2  No orphan file
+- [ ] There must be no orphan .frm files
+- [ ] If MySQL crashes in  the middle of an ALTER TABLE operation, you may end up with an orphaned temporary table inside the InnoDB tablespace. 
+- [ ] What if you have deleted the `.frm` file from the temprary table, you can copy any other InnoDB `.frm` file to have that name and drop the table as simulated below.
+- [ ] What if you see a `.frm` orphan file strating with `#` i.e. `#sql-f3be_1.frm` and you are trying to drop it using the command `drop table #sql-f3be_1.frm`, this will result an `table not found`. To resolve use drop table `#mysql50##sql-f3be_1.frm`. The trick here is to prefix the tablename with #mysql50# to prevent the server from escaping the hash mark and hyphen
+- [ ] Ref: https://mariadb.com/resources/blog/get-rid-of-orphaned-innodb-temporary-tables-the-right-way/
+
+#### 1.3 Empty Definers in Triggers !
+- [ ] Triggers must not have a missing or empty definer or an invalid creation context i.e.
+  - [ ] character_set_client
+  - [ ] collation_connection
+  - [ ] Database collections 
+  
+
+#### Simulation
+```bash
 # Check if the following triggers or invalid context exists
 # Note: A database trigger is procedural code that is automatically executed in response to certain events on a particular table or view in a database.
 - [x] character_set_client
@@ -141,11 +381,10 @@ mysql > cp t1.frm "#sql-f3db_2.frm"
 
 ```
 
-### Checklist 02: Is any of your tables having non-native storage engines?
+### Checklist Item 02: Is any of your tables having non-native storage engines?
 #### 2.1 Any Partition Table without Native partition  support ?
 - [x] There must be no partition tables that use a storage engine that does not have native partitioning support.
 - [ ] If you have any storage engine other than native partitioned support,how to alter those to native storage engine.
-
 
 #### 2.2 Must be no table patition that reside in shared InnoDB tablespace
 - [x] Before upgrading to MySQL 8.0.13 or higher, there must be no table partitions that reside in shared InnoDB tablespaces, which include the system tablespace and general tablespaces. 
@@ -298,11 +537,11 @@ WHERE TABLE_NAME IN
 #*** For a table with a constraint name that exceeds 64 characters, drop the constraint and add it back with constraint name that does not exceed 64 characters (use `ALTER TABLE`)
 ```
 
-### Checklist 03: Chenages in Keywords and Reserved words in MySQL 8.
+### Checklist Item 04: Chenages in Keywords and Reserved words in MySQL 8.
 - [x] Find the reserved list [here](https://dev.mysql.com/doc/refman/8.0/en/keywords.html).
 
-### Checklist 04: Obsolete SQL Modes in MySQL 8?
-#### 4.1 Is MySQL 8.0 is failing at startup due to obsolete sql_mode ?
+### Checklist Item 05: Obsolete SQL Modes in MySQL 8?
+#### 5.1 Is MySQL 8.0 is failing at startup due to obsolete sql_mode ?
 - [x] There must be no obsolete SQL Modes defined by `sql_mode` system variable.
 - [ ] Attempting to use an obsolete SQL mode prevents MySQL 8.0 from starting.
 - [ ] Applications that use obsolte SQL modes should be revised to avoid them.
@@ -342,8 +581,8 @@ sql > set global sql_mode="ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DAT
 
 ```
 
-### Checklist 05: View Length and Changes in View
-#### 5.1 length(view) should not exceed 64 characters
+### Checklist Item 06: View Length and Changes in View
+#### 6.1 length(view) should not exceed 64 characters
 - [x] Note: views with column names up to 255 characters were permitted in MySQL 5.7. 
 - [ ] To avoid upgrade errors, such views shouyld be altered before upgrading.
 - [ ] Ref: https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
