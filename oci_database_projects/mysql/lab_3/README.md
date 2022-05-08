@@ -1,29 +1,43 @@
 # Migrating MySQL 5.7 to MySQL 8 | Challenges
-## CheckList
-Ref: https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysql-8
+## References
+- [x] https://severalnines.com/database-blog/tips-for-upgrading-mysql-5-7-to-mysql-8
+- [ ] Upgrade prerequisites: https://dev.mysql.com/doc/refman/8.0/en/upgrade-prerequisites.html
 
-### Introduction:
+## Introduction:
 - [x] For all of you who use MySQL 5.6, make sure you upgrade it to MySQL 5.7 first and then eventually to MySQL 8.0 
 - [x] However, always note that migration is a one-way ticket. Once the upgrade is complte, there is no coming back. If you are plannign to migrate the MySQL 5.7 to MySQL 8.0, make sure to take a backup of your database directly before upgrade. 
 
+## Priliminary Checklist
+- [x] Features Removed in MySQL 8.0. Click [here](https://dev.mysql.com/doc/refman/8.0/en/mysql-nutshell.html#mysql-nutshell-removals) for details.
+  - [ ] Some InnoDB Information Schema Views renamed
+  - [ ] Features related to account management removed
+  - [ ] The query cache was removed
+  - [ ] The data dictionary provides information about database objects, so the server no longer checks directory names in the data directory to find databases.
+  - [ ] The DDL log, also known as the metadata log, has been removed.
+  - [ ] Read More at [here](https://dev.mysql.com/doc/refman/8.0/en/mysql-nutshell.html#mysql-nutshell-removals).
+- [ ] Server and Status Variables and Options Added, Deprecated, or Removed in MySQL 8.0. Click [here](https://dev.mysql.com/doc/refman/8.0/en/added-deprecated-removed.html) for details.
 
-### Priliminary Checklist 01: Sanity Check before upgrading
----
-- [x] There must be no tables that use obsolete data types or function. 
+## Checklists
+### Checklist 01: Sanity Check before upgrading
+#### 1.1 Any Obsolete DataType ?
+- [x] There must be no tables that use obsolet data types or function. 
   - [ ] In-place upgrade to MySQL 8.0 is not supported if tables contain old temporal columns in pre-5.6.4 format (TIME,DATETIME,TIMESTAMP columns without support for fractional seconds precision). If your tables still use the old temporal column format, upgrade using `REPAIR TABLE` before attmpting an in-place upgrade ti MySQL 8.0
+
+#### 1.2  No orphan file
 - [ ] There must be no orphan .frm files
-  - [ ] If MySQL crashes in  the middle of an ALTER TABLE operation, you may end up with an orphaned temporary table inside the InnoDB tablespace. 
-  - [ ] What if you have deleted the `.frm` file from the temprary table, you can copy any other InnoDB `.frm` file to have that name and drop the table as simulated below.
-  - [ ] What if you see a `.frm` orphan file strating with `#` i.e. `#sql-f3be_1.frm` and you are trying to drop it using the command `drop table #sql-f3be_1.frm`, this will result an `table not found`. To resolve use drop table `#mysql50##sql-f3be_1.frm`. The trick here is to prefix the tablename with #mysql50# to prevent the server from escaping the hash mark and hyphen
-  - [ ] Ref: https://mariadb.com/resources/blog/get-rid-of-orphaned-innodb-temporary-tables-the-right-way/
+- [ ] If MySQL crashes in  the middle of an ALTER TABLE operation, you may end up with an orphaned temporary table inside the InnoDB tablespace. 
+- [ ] What if you have deleted the `.frm` file from the temprary table, you can copy any other InnoDB `.frm` file to have that name and drop the table as simulated below.
+- [ ] What if you see a `.frm` orphan file strating with `#` i.e. `#sql-f3be_1.frm` and you are trying to drop it using the command `drop table #sql-f3be_1.frm`, this will result an `table not found`. To resolve use drop table `#mysql50##sql-f3be_1.frm`. The trick here is to prefix the tablename with #mysql50# to prevent the server from escaping the hash mark and hyphen
+- [ ] Ref: https://mariadb.com/resources/blog/get-rid-of-orphaned-innodb-temporary-tables-the-right-way/
+
+#### 1.3 Empty Definers in Triggers !
 - [ ] Triggers must not have a missing or empty definer or an invalid creation context i.e.
   - [ ] character_set_client
   - [ ] collation_connection
   - [ ] Database collections 
   
-  ---
 
-**Simulation**
+#### Simulation
 ```bash
 # Before you attempt anything, you should double-check that your existing MySQL 5.7 setup ticks all the boxes on the sanity checklist before upgrtading to MySQL 8.0
 > mysqlcheck -u root -p --all-databases --check-upgrade
@@ -127,14 +141,25 @@ mysql > cp t1.frm "#sql-f3db_2.frm"
 
 ```
 
-### Priliminary Checklist 02: Is any of your tables having non-native storage engines?
+### Checklist 02: Is any of your tables having non-native storage engines?
+#### 2.1 Any Partition Table without Native partition  support ?
 - [x] There must be no partition tables that use a storage engine that does not have native partitioning support.
-- [ ] If you have any storage engine other than native partitioned support,, how to alter those to native storage engine.
+- [ ] If you have any storage engine other than native partitioned support,how to alter those to native storage engine.
+
+
+#### 2.2 Must be no table patition that reside in shared InnoDB tablespace
+- [x] Before upgrading to MySQL 8.0.13 or higher, there must be no table partitions that reside in shared InnoDB tablespaces, which include the system tablespace and general tablespaces. 
+
+#### 2.3 Check if any storage enginer having MyISAM tables
 - [ ] What if you have a storage engine having `MyISAM` tables and you need to convert those to `InnoDB`
+
+#### 2.4 Conflicting with MySQL 8.0 Data Dictionary
 - [ ] There must be no tables in the MySQL 5.7 mysql system database that have the same name as a table used by the MySQL 8.0 data dictionary
+
+#### 2.5 Is FK constraints > 64 character ?
 - [ ] There must be no tables that have foreign key constraint names longer than 64 characters
 
-**Simulation**
+#### Simulation
 ```bash
 # Lets find out whether exisiting database having any storage enginer other than the native partition support or in partitioned. 
 > mysqlsh root@localhost --sql
@@ -147,7 +172,16 @@ AND CREATE_OPTIONS LIKE '%partitioned%';
 sql> alter table table_name ENGINE = INNODB;
 
 # To make a partitioned table non-partitoned
-sql> alter tbale table_name REMOVE PARTITIONING;
+sql> alter table table_name REMOVE PARTITIONING;
+
+# Identify table partitions in shared tablespaces by querying INFORMATION_SCHEMA
+# If MySQL 8.0
+sql > SELECT DISTINCT NAME, SPACE, SPACE_TYPE FROM INFORMATION_SCHEMA.INNODB_TABLES
+  WHERE NAME LIKE '%#P#%' AND SPACE_TYPE NOT LIKE 'Single';
+
+# If MySQL 5.7
+sql > SELECT DISTINCT NAME, SPACE, SPACE_TYPE FROM INFORMATION_SCHEMA.INNODB_SYS_TABLES
+  WHERE NAME LIKE '%#P#%' AND SPACE_TYPE NOT LIKE 'Single';
 
 # There must be no tables in the MySQL 5.7 mysql system database that have the same name as a table used by the MySQL 8.0 data dictionary. To identify tables with those names, execute this query:
 # Any tables reported by the query must be dropped or renamed (use RENAME TABLE). This may also entail changes to applications that use the affected tables.
@@ -187,9 +221,219 @@ and LOWER(TABLE_NAME) IN
 'view_routine_usage',
 'view_table_usage'
 );
+
+# The INNODB_FOREIGN table provides metadata about InnoDB foreign keys. The INNODB_FOREIGN table has these columns:
+-[x] ID: The name (not numeric) of the foreign key index, preceded by the schema(database) name i.e. test/products_fk
+-[x] FOR_NAME: The name of the child table in this foreign key relationship.
+-[x] REF_NAME: The name of the parent table in this foreign key relationship.
+-[x] N_COLS: The number of columns in the foreign key index.
+-[x] TYPE: A collection of bit flags with information about the foreign key column, ORed together. 
+  0 = ON DELETE/UPDATE RESTRICT, 
+  1 = ON DELETE CASCADE, 
+  2 = ON DELETE SET NULL, 
+  4 = ON UPDATE CASCADE, 
+  8 = ON UPDATE SET NULL, 
+  16 = ON DELETE NO ACTION, 
+  32 = ON UPDATE NO ACTION.
+sql> select * from information_schema.innodb_foreign\G
+*************************** 1. row ***************************
+      ID: classicmodels/customers_ibfk_1  (test/fk1)
+FOR_NAME: classicmodels/customers         (test/child)
+REF_NAME: classicmodels/employees         (test/parent)
+  N_COLS: 1
+    TYPE: 48
+*************************** 2. row ***************************
+      ID: classicmodels/employees_ibfk_1
+FOR_NAME: classicmodels/employees
+REF_NAME: classicmodels/employees
+  N_COLS: 1
+    TYPE: 48
+*************************** 3. row ***************************
+      ID: classicmodels/employees_ibfk_2
+FOR_NAME: classicmodels/employees
+REF_NAME: classicmodels/offices
+  N_COLS: 1
+    TYPE: 48
+*************************** 4. row ***************************
+      ID: classicmodels/orderdetails_ibfk_1
+FOR_NAME: classicmodels/orderdetails
+REF_NAME: classicmodels/orders
+  N_COLS: 1
+    TYPE: 48
+*************************** 5. row ***************************
+      ID: classicmodels/orderdetails_ibfk_2
+FOR_NAME: classicmodels/orderdetails
+REF_NAME: classicmodels/products
+  N_COLS: 1
+    TYPE: 48
+*************************** 6. row ***************************
+      ID: classicmodels/orders_ibfk_1
+FOR_NAME: classicmodels/orders
+REF_NAME: classicmodels/customers
+  N_COLS: 1
+    TYPE: 48
+*************************** 7. row ***************************
+      ID: classicmodels/payments_ibfk_1
+FOR_NAME: classicmodels/payments
+REF_NAME: classicmodels/customers
+  N_COLS: 1
+    TYPE: 48
+*************************** 8. row ***************************
+      ID: classicmodels/products_ibfk_1
+FOR_NAME: classicmodels/products
+REF_NAME: classicmodels/productlines
+  N_COLS: 1
+    TYPE: 48
+8 rows in set (0.0068 sec)
+
+# Check if you have tables having FK key contraint names longer than 64 characters. Use the below query to identify tables with constraint names that are too long.
+sql> SELECT TABLE_SCHEMA, TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME IN
+  (SELECT LEFT(SUBSTR(ID,INSTR(ID,'/')+1),
+               INSTR(SUBSTR(ID,INSTR(ID,'/')+1),'_ibfk_')-1)
+   FROM INFORMATION_SCHEMA.INNODB_FOREIGN
+   WHERE LENGTH(SUBSTR(ID,INSTR(ID,'/')+1))>64);
+
+#*** For a table with a constraint name that exceeds 64 characters, drop the constraint and add it back with constraint name that does not exceed 64 characters (use `ALTER TABLE`)
 ```
 
-### Priliminary Checklist 06: changes in views
+### Checklist 03: Chenages in Keywords and Reserved words in MySQL 8.
+- [x] Find the reserved list [here](https://dev.mysql.com/doc/refman/8.0/en/keywords.html).
+
+### Checklist 04: Obsolete SQL Modes in MySQL 8?
+#### 4.1 Is MySQL 8.0 is failing at startup due to obsolete sql_mode ?
+- [x] There must be no obsolete SQL Modes defined by `sql_mode` system variable.
+- [ ] Attempting to use an obsolete SQL mode prevents MySQL 8.0 from starting.
+- [ ] Applications that use obsolte SQL modes should be revised to avoid them.
+- [ ] To avoid a startup failure on MySQL 8.0, remove any instance of NO_AUTO_CREATE_USER from sql_mode system variable settings in MySQL option files.
+- [ ] Loading a dump file that includes the NO_AUTO_CREATE_USER SQL mode in stored program definitions into a MySQL 8.0 server causes a failure. 
+- [ ] As of MySQL 5.7.24 and MySQL 8.0.13, mysqldump removes NO_AUTO_CREATE_USER from stored program definitions. 
+- [ ] Dump files created with an earlier version of mysqldump must be modified manually to remove instances of NO_AUTO_CREATE_USER.
+
+#### Simulation
+```bash
+# Check for your sql_mode in my.cnf
+# Find where is your my.cnf file is
+> find / -name my.cnf
+[mysqld]
+sql-mode="STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"
+
+# Check your current sql_modes
+sql > show variables like 'sql_mode';
+    > select @@sql_mode;
+
+# Check the current global and session sql_mode
+sql > select @@GLOBAL.sql_mode;
+    > select @@SESSION.sql_mode;
+
+# What if you accidentally enabled a sql_mode and you want to disable it now ?
+# i.e. accidentally enabled sql_mode 'ONLY_FULL_GROUP_BY' and you want to remove it
+sql > SET sql_mode = 'ONLY_FULL_GROUP_BY';
+    > SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
+
+# Be careful of iusing sql_mode=''. This actually clears all the modes currently enabled.
+sql > sql_mode = '';
+    > select @@sql_mode;
+
+# or you can set the global and session sql_mode like below:
+sql > set global sql_mode="ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+    > set session sql_mode="ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+
+```
+
+### Checklist 05: View Length and Changes in View
+#### 5.1 length(view) should not exceed 64 characters
+- [x] Note: views with column names up to 255 characters were permitted in MySQL 5.7. 
+- [ ] To avoid upgrade errors, such views shouyld be altered before upgrading.
+- [ ] Ref: https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
+
+#### Simulation
+```bash
+# List all views in a specific database
+# here I have two custom databases 'demo' and 'classicmodels'
+sql > show databases; 
+    > show full tables in demo where table_type like 'VIEW';
+
+# Create a new view named 'myview' in database: demo
+sql > CREATE VIEW demo.v AS SELECT 'a' || 'b' as mycolumn;
+    > show full tables in demo where table_type like 'VIEW';
+    +----------------+------------+
+    | Tables_in_demo | Table_type |
+    +----------------+------------+
+    | myview         | VIEW       |
+    | v              | VIEW       |
+    +----------------+------------+
+    > describe myview;
+    +----------+------+------+-----+---------+-------+
+    | Field    | Type | Null | Key | Default | Extra |
+    +----------+------+------+-----+---------+-------+
+    | mycolumn | int  | NO   |     | 0       |       |
+    +----------+------+------+-----+---------+-------+
+
+    > show create view demo.v\G   #tableName.viewName
+    *************************** 1. row ***************************
+                View: v
+         Create View: CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `demo`.`v` AS select ((0 <> 'a') or (0 <> 'b')) AS `col1`
+character_set_client: utf8mb4
+collation_connection: utf8mb4_0900_ai_ci
+1 row in set (0.0016 sec
+
+
+# Lets be more specific
+sql > SELECT TABLE_SCHEMA, TABLE_NAME 
+      FROM information_schema.VIEWS 
+      WHERE TABLE_SCHEMA LIKE 'your_db_name';
+
+      +--------------+------------+
+      | TABLE_SCHEMA | TABLE_NAME |
+      +--------------+------------+
+      | demo         | v          |
+      | demo         | myview     |
+      +--------------+------------+
+
+# Check the length of a field in a view and check if it is exceedign 64 characters
+sql > SELECT LENGTH('jahidul arafat');    # test
+    > SELECT MAX(LENGTH(field_to_query)) FROM table_to_query;
+    > SELECT LENGTH(field_to_query), COUNT(*) FROM table_to_query GROUP BY LENGTH(field_to_query);
+
+# List all views from INFORMATION_SCHEMA
+sql > select * FROM information_schema.views\G
+    > SELECT DISTINCT table_name FROM information_schema.TABLES WHERE table_type = 'VIEW';
++-----------------------------------------------+
+| TABLE_NAME                                    |
++-----------------------------------------------+
+| version
+...
+| x$statements_with_temp_tables                 |
+| user_summary_by_file_io_type                  |
+| x$user_summary_by_file_io_type                |
+| user_summary_by_file_io                       |
+| x$user_summary_by_file_io                     |
+| user_summary_by_statement_type                |
+| x$user_summary_by_statement_type              |
+| user_summary_by_statement_latency             |
+| x$user_summary_by_statement_latency           |
+| user_summary_by_stages                        |
+| x$user_summary_by_stages                      |
+| user_summary                                  |
+| x$user_summary                                |                   |
+| waits_global_by_latency                       |
+| x$waits_global_by_latency                     |
+| metrics                                       |
+| processlist                                   |
+| x$processlist                                 |
+| session                                       |
+| x$session                                     |
+| session_ssl_status                            |
+| v                                             |
+| myview                                        |
++-----------------------------------------------+
+102 rows in set (0.0061 sec)
+
+```
+
+#### 5.2 Changes in views
 - [x] Information schema changes: Some of the views which were stored in the information_schema are not supported in MySQL 5.7
   - [ ] global_status
   - [ ] session_status
@@ -198,7 +442,7 @@ and LOWER(TABLE_NAME) IN
 - [x] view `global_variables` is not avaibale in information_schema rather switched to performance_schema database in MySQL 5.7 and MySQL 8
 - [ ] **Impact:** This issue can hit monitoring and trending system which may use those queries to collect MySQL metrics.
 
-**Simulation:**
+#### Simulation
 ```bash
 # Simulation-01
 # information_schema.global_variables view is not available in MySQL 5.7 and not even in MySQL 8.0, you will find it under performance_schema table
@@ -222,6 +466,115 @@ sql> select count(*) from performance_schema.global_variables;
 +----------+
 1 row in set (0.0071 sec)
 ```
+
+### Checklist 06: Check the size of your tables or store procedures
+#### 6.1 Table with ENUM or SET column elements exceeding new MySQL 8.0 limits ?
+- [x] There must be no tables or store procedures with individual ENUM or SET column elements that exceed 255 characters or 1020 bytes in length.
+- [ ] Prior to MySQL 8.0, the maximum combined length of ENUM or SET column elements was 64K.
+- [ ] In MySQL 8.0, the maximum character length of an individual ENUM or SET column element is 255 characters, and the maximum byte length is 1020 bytes. (The 1020 byte limit supports multitibyte character sets). 
+- [ ] Before upgrading to MySQL 8.0, modify any ENUM or SET column elements that exceed the new limits. Failing to do so causes the upgrade to fail with an error.
+
+#### Simulation
+```bash
+# Check the size of your MySQL Databases
+sql > SELECT table_schema AS "Database", 
+ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS "Size (MB)" 
+FROM information_schema.TABLES 
+GROUP BY table_schema;
+
++--------------------+-----------+
+| Database           | Size (MB) |
++--------------------+-----------+
+| classicmodels      |      0.50 |
+| demo               |      0.04 |
+| information_schema |      0.00 |
+| mysql              |      2.56 |
+| performance_schema |      0.00 |
+| sys                |      0.02 |
++--------------------+-----------+
+6 rows in set (0.0889 sec)
+
+# Check the sizes of all tables in a specific database
+sql > SELECT table_name AS "Table",
+ROUND(((data_length + index_length) / 1024 / 1024), 2) AS "Size (MB)"
+FROM information_schema.TABLES
+WHERE table_schema = "classicmodels"      # database name
+ORDER BY (data_length + index_length) DESC;
+
++--------------+-----------+
+| Table        | Size (MB) |
++--------------+-----------+
+| orderdetails |      0.23 |
+| products     |      0.08 |
+| orders       |      0.06 |
+| employees    |      0.05 |
+| customers    |      0.03 |
+| offices      |      0.02 |
+| payments     |      0.02 |
+| productlines |      0.02 |
++--------------+-----------+
+
+```
+
+### Checklist 07: Are you still using ASC or DESC with GroupBy ?
+#### 7.1 OrderBy instead of ASC/DESC in GroupBy | Query
+- [x] As of MySQL 8.0.13, the deprecated ASC or DESC qualifiers for GROUP BY clauses have been removed. 
+- [ ] Queries that previously relied on GROUP BY sorting may produce results that differ from previous MySQL versions. To produce a given sort order, provide an ORDER BY clause.
+
+---
+**Notes:**
+Queries and stored program definitions from MySQL 8.0.12 or lower that use ASC or DESC qualifiers for GROUP BY clauses should be amended. Otherwise, upgrading to MySQL 8.0.13 or higher may fail, as may replicating to MySQL 8.0.13 or higher replica servers.
+
+---
+
+### Checklist 08: Wants to enable lower_case_table_name during upgrade time ?
+#### 8.1 Check if your schema and table names are in lower case or not ?
+- [x] If you intend to change the lower_case_table_names setting to 1 at upgrade time, ensure that schema and table names are lowercase before upgrading. 
+- [ ] Otherwise, a failure could occur due to a schema or table name lettercase mismatch. 
+- [x] Changing the lower_case_table_names setting at upgrade time is not recommended.
+- [x] Ref: https://dev.mysql.com/doc/refman/5.7/en/identifier-case-sensitivity.html
+
+
+#### Simulation
+```bash
+# check for schema and table names containing uppercase characters
+sql > select TABLE_NAME, if(sha(TABLE_NAME) !=sha(lower(TABLE_NAME)),'Yes','No') as UpperCase from information_schema.tables;
+
++------------------------------------------------------+-----------+
+| TABLE_NAME                                           | UpperCase |
++------------------------------------------------------+-----------+
+| customers                                            | No        |
+| employees                                            | No        |
+| offices                                              | No        |
+| orderdetails                                         | No        |
+| orders                                               | No        |
+| payments                                             | No        |
+| productlines                                         | No        |
+| products                                             | No        |
+| myview                                               | No        |
+| t1                                                   | No        |
+| t2                                                   | No        |
+| t3                                                   | No        |
+| v                                                    | No        |
+| ADMINISTRABLE_ROLE_AUTHORIZATIONS                    | Yes       |
+| APPLICABLE_ROLES                                     | Yes       |
+| CHARACTER_SETS                                       | Yes       |
+| CHECK_CONSTRAINTS                                    | Yes       |
+| COLLATION_CHARACTER_SET_APPLICABILITY                | Yes       |
+| COLLATIONS                                           | Yes       |
+
+340 rows in set (0.0079 sec)
+
+# Use lower_case_table_names=0 on Unix and lower_case_table_names=2 on Windows/Mac. This preserves the lettercase of database and table names.
+sql > show variables like 'lower_Case_table_names';
++------------------------+-------+
+| Variable_name          | Value |
++------------------------+-------+
+| lower_case_table_names | 2     |
++------------------------+-------+
+
+```
+
 
 ### Priliminary Checklist 07: SQL Modes
 - [x] With MySQL 5.7, STRICT_TRANS_TABLES mode is used by default. 
@@ -299,10 +652,7 @@ Ref: https://dev.mysql.com/doc/refman/5.7/en/innodb-row-format.html
 - [ ] Use innodb_fast_shutdown=0 when stopping the previous MySQL version to ensure all data as been flushed correctly before attempt the uprade.
 - [ ] With MySQL 5.7, the default row  format has changed to DYNAMIC. If you want to retain the previous COMPACT format as default one, you need to make chnages in MYSQL configuration (innodb_default_row_format).
 - [ ] Valid innodb_default_row_format options include DYNAMIC, COMPACT, and REDUNDANT.
-- [ ] Other Changes: 
-  - [ ] YEAR(2) format --> YEAR(4) format. However, mysql_upgrade will handdle this conversion automatically. 
-  - [ ] What if you want to use usser-defined locks in your application. Earlier (i.e. before MySQL 5.7
-  - [ ] )
+
 
 ```bash
 # Check the defaull row format; For MySQL 5.7 and 8 this should be 'DYNAMIC'
