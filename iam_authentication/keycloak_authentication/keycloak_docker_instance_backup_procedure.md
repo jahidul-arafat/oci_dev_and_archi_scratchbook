@@ -41,7 +41,7 @@ keycloakdb.lock.db	keycloakdb.mv.db	keycloakdb.trace.db
 # Create a docker-compose file mapping the keycload's data volume with the your local volume 
 # Create a new directory i.e. gc_keycloak and cd there and create a new docker-compose.yaml
 # see, we are using the keycloak image 'quay.io/keycloak/keycloak:latest'
-# if you have someother image, the modify the image accordingly
+# if you have someother image, then modify the image accordingly
 # certain version of the image could have an impact on your spring-application integration
 > cd gc_keycloak
 > vim docker-compose.yaml
