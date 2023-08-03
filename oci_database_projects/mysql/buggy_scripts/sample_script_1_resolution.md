@@ -1,6 +1,8 @@
 ## Resolution
 In the modified script, I have made the following changes:
 
+ ** Please keep in mind that running these scripts should be done in a controlled environment for simulation and learning purposes. Always exercise caution and ensure thorough testing before applying any changes to production systems.
+
 ### Resolution01/Scenario (a): Filling up the InnoDB temporary tablespace
 
 - [x] Changed the table's storage engine to ENGINE=MEMORY to use memory-based storage, which is typically faster than disk-based storage.
