@@ -5,7 +5,7 @@ Green = good
 Red = Not good
 Purple = possibly not good
 
-Author: @LuemmelSec
+Author: @JahidulArafat
 License: BSD 3-Clause
 
 #>
@@ -67,7 +67,7 @@ function Client-Checker{
     Write-host ""
     Write-host "#######################################################" -ForegroundColor DarkCyan
     Write-Host "#                   Client-Checker                    #" -ForegroundColor DarkCyan
-    Write-Host "#                   by @LuemmelSec                    #" -ForegroundColor DarkCyan
+    Write-Host "#                   by @JahidulArafat                    #" -ForegroundColor DarkCyan
     Write-Host "#          Automating Client Security Checks          #" -ForegroundColor DarkCyan
     Write-host "#######################################################" -ForegroundColor DarkCyan
     Write-host ""
@@ -77,7 +77,7 @@ function Client-Checker{
     Write-Host "Stuff marked yellow are errors" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "If you happen to use PwnDoc or PwnDoc-ng, you can use my templates alongside this tool:"
-    Write-Host "https://github.com/LuemmelSec/PwnDoc-Vulns/blob/main/SystemSecurity.yml"
+    Write-Host "https://github.com/JahidulArafat/PwnDoc-Vulns/blob/main/SystemSecurity.yml"
     Write-Host ""
 
     ########### Preflight Checks ###########
@@ -384,7 +384,7 @@ function Client-Checker{
     Write-host "# If TPM only > possibly insecure #"
     Write-host "###################################"
     Write-host "References: https://learn.microsoft.com/en-us/powershell/module/bitlocker/add-bitlockerkeyprotector?view=windowsserver2022-ps" -ForegroundColor DarkGray
-    Write-host "References: https://luemmelsec.github.io/Go-away-BitLocker-you-are-drunk/" -ForegroundColor DarkGray
+    Write-host "References: https://JahidulArafat.github.io/Go-away-BitLocker-you-are-drunk/" -ForegroundColor DarkGray
     Write-host ""
     $volumes = $null
 
@@ -608,7 +608,7 @@ function Client-Checker{
     Write-host "#########################################"
     Write-host "# Now checking NetBIOS / LLMNR settings #"
     Write-host "#########################################"
-    Write-host "References: https://luemmelsec.github.io/Relaying-101/" -ForegroundColor DarkGray
+    Write-host "References: https://JahidulArafat.github.io/Relaying-101/" -ForegroundColor DarkGray
     Write-host ""
 
     # Check if LLMNR is enabled or disabled
@@ -664,7 +664,7 @@ function Client-Checker{
     Write-host "####################################"
     Write-host "# Now checking SMB Server settings #"
     Write-host "####################################"
-    Write-host "References: https://luemmelsec.github.io/Relaying-101/" -ForegroundColor DarkGray
+    Write-host "References: https://JahidulArafat.github.io/Relaying-101/" -ForegroundColor DarkGray
     Write-host "References: https://techcommunity.microsoft.com/t5/storage-at-microsoft/configure-smb-signing-with-confidence/ba-p/2418102" -ForegroundColor DarkGray
     Write-host ""
 
