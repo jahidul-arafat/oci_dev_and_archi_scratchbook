@@ -33,14 +33,14 @@ ods_vault_master_key_length    = 32
 #*************************************
 
 #OCI Region, user "Region Identifier" as documented here https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
-region           = ""
+region           = "ap-mumbai-2"
 #The Compartment OCID to provision artificats within
-compartment_ocid = ""
+compartment_ocid = "aaa"
 #OCI User OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
-user_ocid        = ""
+user_ocid        = "aaa"
 #OCI tenant OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
-tenancy_ocid     = ""
+tenancy_ocid     = "aaa"
 #Path to private key used to create OCI "API Key", more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
-private_key_path = ""
+private_key_path = "aaa"
 # "API Key" fingerprint, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
-fingerprint      = ""
+fingerprint      = "aaa"
