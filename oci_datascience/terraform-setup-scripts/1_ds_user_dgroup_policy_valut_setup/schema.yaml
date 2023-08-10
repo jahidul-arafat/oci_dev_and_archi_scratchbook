@@ -1,0 +1,157 @@
+# Title shown in Application Information tab.
+title: "Data Science Resource (JA-Kata) Manager Stack| Not for Terraform"
+# Sub Title shown in Application Information tab.
+description: "Provision Data Science and its prerequisites"
+schemaVersion: 1.1.0
+version: "1.0"
+locale: "en"
+variableGroups:
+  - title: "Hidden"
+    variables:
+      - compartment_ocid
+      - tenancy_ocid
+      - user_ocid
+      - region
+      - fingerprint
+      - private_key_path
+    visible: false
+  - title: "Provision in"
+    variables:
+      - region
+      - compartment_ocid
+    visible: false
+  - title: "IAM Groups and Policies Configuration"
+    variables:
+      - ods_group_name
+      - ods_dynamic_group_name
+      - ods_policy_name
+  - title: "Vault Configuration"
+    variables:
+      - enable_vault
+      - ods_use_existing_vault
+      - ods_existing_vault
+      - ods_vault_name
+      - ods_vault_type
+      - enable_create_vault_master_key
+      - ods_vault_master_key_name
+      - ods_vault_master_key_length
+
+variables:
+  region:
+    type: oci:identity:region:name
+    required: true
+    visible: true
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    required: true
+    title: "Compartment"
+    visible: true
+  tenancy_ocid:
+    type: string
+    required: true
+    visible: false
+  ods_group_name:
+    type: string
+    title: "Group Name for security policies"
+    description: "Do not use spaces."
+    required: true
+    default: "DataScienceGroup"
+    pattern: "^[a-zA-Z0-9]+$"
+  ods_dynamic_group_name:
+    type: string
+    title: "Dynamic Group Name for Data Science resources"
+    description: "Do not use spaces."
+    required: true
+    default: "DataScienceDynamicGroup"
+    pattern: "^[a-zA-Z0-9]+$"
+  ods_policy_name:
+    type: string
+    title: "Policy Name (Compartment Level)"
+    description: "Do not use spaces."
+    required: true
+    default: "DataSciencePolicies"
+    pattern: "^[a-zA-Z0-9]+$"
+  enable_vault:
+    type: boolean
+    title: "Enable Vault Support ?"
+    description: "Use a vault to store secrets and manage encrypted resources."
+    required: true
+    default: false
+  ods_use_existing_vault:
+    type: boolean
+    title: "Use Existing vault?"
+    description: "Use a pre-existing vault in the current compartment."
+    required: true
+    default: false
+    visible: enable_vault
+
+  ods_existing_vault:
+    type: oci:kms:vault:id
+    title: "Select a vault"
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    visible:
+      and:
+        - ods_use_existing_vault
+        - enable_vault
+
+  ods_vault_name:
+    type: string
+    title: "Vault Name"
+    default: "Data Science Vault"
+    required: true
+    visible:
+      and:
+        - enable_vault
+        - not:
+            - ods_use_existing_vault
+  ods_vault_type:
+    type: enum
+    title: "Vault Type"
+    default: "DEFAULT"
+    required: true
+    visible:
+      and:
+        - enable_vault
+        - not:
+            - ods_use_existing_vault
+    enum:
+      - DEFAULT
+      - VIRTUAL
+  enable_create_vault_master_key:
+    type: boolean
+    title: "Create a master encryption key in the vault?"
+    required: true
+    default: true
+    visible:
+      and:
+        - enable_vault
+        - not:
+            - ods_use_existing_vault
+  ods_vault_master_key_name:
+    type: string
+    title: "Master Encryption Key Name"
+    default: "DataScienceKey"
+    required: true
+    visible:
+      and:
+        - enable_vault
+        - enable_create_vault_master_key
+        - not:
+            - ods_use_existing_vault
+
+  ods_vault_master_key_length:
+    type: enum
+    title: "Length of the master encryption key"
+    default: 32
+    required: true
+    visible:
+      and:
+        - enable_vault
+        - enable_create_vault_master_key
+        - not:
+            - ods_use_existing_vault
+    enum:
+      - 16
+      - 24
+      - 32
