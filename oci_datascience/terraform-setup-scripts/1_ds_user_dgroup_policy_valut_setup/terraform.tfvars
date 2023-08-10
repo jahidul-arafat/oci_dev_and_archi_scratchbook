@@ -32,15 +32,15 @@ ods_vault_master_key_length    = 32
 #           TF Requirements - Not required, as I am gonna export these from a separate .sh script
 #*************************************
 
-##OCI Region, user "Region Identifier" as documented here https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
-#region           = ""
-##The Compartment OCID to provision artificats within
-#compartment_ocid = ""
-##OCI User OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
-#user_ocid        = ""
-##OCI tenant OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
-#tenancy_ocid     = ""
-##Path to private key used to create OCI "API Key", more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
-#private_key_path = ""
-## "API Key" fingerprint, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
-#fingerprint      = ""
+#OCI Region, user "Region Identifier" as documented here https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
+region           = ""
+#The Compartment OCID to provision artificats within
+compartment_ocid = ""
+#OCI User OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
+user_ocid        = ""
+#OCI tenant OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
+tenancy_ocid     = ""
+#Path to private key used to create OCI "API Key", more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
+private_key_path = ""
+# "API Key" fingerprint, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
+fingerprint      = ""
