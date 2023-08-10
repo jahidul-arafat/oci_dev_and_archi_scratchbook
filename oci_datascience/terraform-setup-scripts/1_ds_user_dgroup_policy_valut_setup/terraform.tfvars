@@ -18,13 +18,13 @@ ods_policy_name        = "ds-kata-policies"
 // If enabled, an OCI Vault along with the needed OCI policies to manage "Vault service" will be created
 enable_vault                   = true
 // ODS Vault Name
-ods_vault_name                 = "ds-kata-vault"
+ods_vault_name                 = "Data Science Vault"
 // ODS Vault Type, allowed values (VIRTUAL, DEFAULT)
 ods_vault_type                 = "DEFAULT"
 // If enabled, a Vault Master Key will be created.
 enable_create_vault_master_key = true
 // ODS Vault Master Key Name
-ods_vault_master_key_name      = "ds-kata-vault-master-key"
+ods_vault_master_key_name      = "Data Science Master Key"
 // ODS Vault Master Key length, allowed values (16, 24, 32)
 ods_vault_master_key_length    = 32
 
@@ -32,15 +32,15 @@ ods_vault_master_key_length    = 32
 #           TF Requirements - Not required, as I am gonna export these from a separate .sh script
 #*************************************
 
-#OCI Region, user "Region Identifier" as documented here https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
-region           = "ap-mumbai-1"
-#The Compartment OCID to provision artificats within
-compartment_ocid = "ocid1.compartment.oc1..aaaaaaaaoelxgznolu5rxuvmtvcyxo5zhbwyyyicdtpg7sjivrffkdcwarya"
-#OCI User OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
-user_ocid        = "ocid1.user.oc1..aaaaaaaapywnutbzqhhauyqia23z4nq5cmuv6tsbk2mvzlu2csj4eooz33lq"
-#OCI tenant OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
-tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaanbynfzds6esghootofhfrbnahj3aeihhd7e3ghrn37cf452ywo3q"
-#Path to private key used to create OCI "API Key", more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
-private_key_path = "/Users/jarotball/.oci/oci_api_key.pem"
-# "API Key" fingerprint, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
-fingerprint      = "b0:a2:4c:e1:4b:b7:92:32:be:e3:8a:0d:59:76:a5:9b"
+##OCI Region, user "Region Identifier" as documented here https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm
+#region           = ""
+##The Compartment OCID to provision artificats within
+#compartment_ocid = ""
+##OCI User OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
+#user_ocid        = ""
+##OCI tenant OCID, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm#five
+#tenancy_ocid     = ""
+##Path to private key used to create OCI "API Key", more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
+#private_key_path = ""
+## "API Key" fingerprint, more details can be found at https://docs.cloud.oracle.com/en-us/iaas/Content/General/Concepts/credentials.htm#two
+#fingerprint      = ""
