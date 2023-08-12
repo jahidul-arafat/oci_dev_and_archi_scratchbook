@@ -1,4 +1,4 @@
-# Terraform VCN for Oracle Cloud Infrastructure
+# Terraform VCN for DataScience Project in Oracle Cloud Infrastructure
 
 The [Terraform VCN][repo] for [Oracle Cloud Infrastructure][OCI] provides a reusable [Terraform][terraform] module that provisions a minimal VCN on OCI.
 
