@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-db
+  template:
+    metadata:
+      labels:
+        app: travellist-db
+    spec:
+      containers:
+        - name: mysql
+          image: mysql/mysql-server:latest
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: ${DB_DATABASE}
+            - name: MYSQL_ROOT_PASSWORD
+              value: ${DB_PASSWORD}
+            - name: MYSQL_PASSWORD
+              value: ${DB_PASSWORD}
+            - name: MYSQL_USER
+              value: ${DB_USERNAME}
+            - name: SERVICE_TAGS
+              value: dev
+            - name: SERVICE_NAME
+              value: mysql
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-data
+          emptyDir: {}
+        - name: init-scripts
+          configMap:
+            name: mysql-init-scripts
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: travellist-db
+spec:
+  selector:
+    app: travellist-db
+  ports:
+    - protocol: TCP
+      port: 3306

@@ -1,0 +1,110 @@
+# Namespace where your application will be deployed
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: travellist-namespace
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-db
+  namespace: travellist-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-db
+  template:
+    metadata:
+      labels:
+        app: travellist-db
+    spec:
+      containers:
+        - name: mysql
+          image: mysql/mysql-server:latest
+          env:
+            - name: MYSQL_DATABASE
+              value: travellist
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+            - name: MYSQL_USER
+              value: travellist_user
+            - name: MYSQL_PASSWORD
+              value: password
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-volume
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-volume
+          configMap:
+            name: mysql-init-scripts
+---
+# Laravel Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-app
+  namespace: travellist-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-app
+  template:
+    metadata:
+      labels:
+        app: travellist-app
+    spec:
+      containers:
+        - name: travellist-app
+          image: jahidularafat/travellist:latest
+          env:
+            - name: APP_NAME
+              value: Travellist
+            - name: APP_ENV
+              value: dev
+            - name: APP_KEY
+              value: base64:y7einNYPLt0i2dI3IRKis8UdmK4ciLdHzZcPtBiaLq8=
+            - name: APP_DEBUG
+              value: "true"  # Note: boolean values should be enclosed in double quotes
+            - name: APP_URL
+              value: http://localhost:8000
+          ports:
+            - containerPort: 9000
+---
+# Service to expose the app on port 8080
+apiVersion: v1
+kind: Service
+metadata:
+  name: travellist-app-service
+  namespace: travellist-namespace
+spec:
+  selector:
+    app: travellist-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 9000
+---
+#ConfigMap for MySQL Database
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-scripts
+  namespace: travellist-namespace
+data:
+  init.sql: |-
+    DROP TABLE IF EXISTS `places`;
+
+    CREATE TABLE `places` (
+    `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `visited` tinyint(1) NOT NULL DEFAULT '0',
+    PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    INSERT INTO `places` (name, visited) VALUES ('Dhaka',0),('Basundhara',0),('Sanaul Vai House',1),('Oracle',0),('JA Villa',0),('USA',0),('Monir vai House',1),('JA-TEST',0),('JA-OSLO',1),('JA-Rio',0),('JA-Tokyo',0);
+

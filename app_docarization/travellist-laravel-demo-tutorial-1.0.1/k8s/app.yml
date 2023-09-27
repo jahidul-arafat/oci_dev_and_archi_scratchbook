@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-app
+  template:
+    metadata:
+      labels:
+        app: travellist-app
+    spec:
+      containers:
+        - name: travellist-app
+          image: jahidularafat/travellist:latest
+          env:
+            - name: APP_NAME
+              value: Travellist
+            - name: APP_ENV
+              value: dev
+            - name: APP_KEY
+              value: base64:y7einNYPLt0i2dI3IRKis8UdmK4ciLdHzZcPtBiaLq8=
+            - name: APP_DEBUG
+              value: "true"  # Note: boolean values should be enclosed in double quotes
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - name: app-volume
+              mountPath: /var/www
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi  # Adjust the size as needed

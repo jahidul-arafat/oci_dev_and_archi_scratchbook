@@ -1,0 +1,16 @@
+# Use the official MySQL image
+FROM mysql/mysql-server:latest
+
+# Set environment variables
+ENV MYSQL_DATABASE=${DB_DATABASE} \
+    MYSQL_ROOT_PASSWORD=${DB_PASSWORD} \
+    MYSQL_PASSWORD=${DB_PASSWORD} \
+    MYSQL_USER=${DB_USERNAME} \
+    SERVICE_TAGS=dev \
+    SERVICE_NAME=mysql
+
+# Expose the MySQL port
+EXPOSE 3306
+
+# Copy SQL scripts for initialization
+COPY ./docker-compose/mysql /docker-entrypoint-initdb.d

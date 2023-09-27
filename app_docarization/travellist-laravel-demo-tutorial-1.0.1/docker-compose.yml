@@ -1,0 +1,40 @@
+version: "3.8"
+services:
+  app:
+    image: jahidularafat/travellist-app:latest
+    container_name: travellist-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    networks:
+      - travellist
+  db:
+    image: jahidularafat/travellist-db:latest
+    container_name: travellist-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    ports:
+      - "3306:3306"  # Map host port 3306 to container port 3306
+    networks:
+      - travellist
+
+  nginx:
+    image: jahidularafat/travellist-nginx:latest
+    container_name: travellist-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+#    volumes:
+#      - ./:/var/www
+#      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - travellist
+
+networks:
+  travellist:
+    driver: bridge

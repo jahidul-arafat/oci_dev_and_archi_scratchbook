@@ -1,0 +1,159 @@
+# Namespace where your application will be deployed
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: travellist-namespace
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-db
+  namespace: travellist-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-db
+  template:
+    metadata:
+      labels:
+        app: travellist-db
+    spec:
+      containers:
+        - name: mysql
+          image: mysql/mysql-server:latest
+          env:
+            - name: MYSQL_DATABASE
+              value: travellist
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+            - name: MYSQL_USER
+              value: travellist_user
+            - name: MYSQL_PASSWORD
+              value: password
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-volume
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-volume
+          hostPath:
+            path: /Users/jarotball/study/oci_dev_and_archi_scratchbook/app_docarization/travellist-laravel-demo-tutorial-1.0.1/docker-compose/mysql
+---
+# Laravel Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-app
+  namespace: travellist-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-app
+  template:
+    metadata:
+      labels:
+        app: travellist-app
+    spec:
+      containers:
+        - name: travellist-app
+          image: jahidularafat/travellist:latest
+          env:
+            - name: APP_NAME
+              value: Travellist
+            - name: APP_ENV
+              value: dev
+            - name: APP_KEY
+              value: base64:y7einNYPLt0i2dI3IRKis8UdmK4ciLdHzZcPtBiaLq8=
+            - name: APP_DEBUG
+              value: "true"  # Note: boolean values should be enclosed in double quotes
+            - name: APP_URL
+              value: http://localhost:8000
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - name: app-volume
+              mountPath: /var/www
+      volumes:
+        - name: app-volume
+          emptyDir: {}
+---
+# Nginx Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: travellist-nginx-service
+  namespace: travellist-namespace
+spec:
+  selector:
+    app: travellist-nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30008
+  type: NodePort  # You might need to adjust the service type based on your environment
+---
+# Nginx Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-nginx
+  namespace: travellist-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: travellist-nginx
+  template:
+    metadata:
+      labels:
+        app: travellist-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: app-volume
+              mountPath: /var/www
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: app-volume
+          hostPath:
+            path: /Users/jarotball/study/oci_dev_and_archi_scratchbook/app_docarization/travellist-laravel-demo-tutorial-1.0.1
+---
+# ConfigMap for Nginx Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: travellist-namespace
+data:
+  default.conf: |-
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            root   /var/www/public;
+            index  index.php index.html index.htm;
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+
+        location ~ \.php$ {
+            root           /var/www/public;
+            fastcgi_pass   php-fpm:9000;
+            fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include        fastcgi_params;
+        }
+    }
