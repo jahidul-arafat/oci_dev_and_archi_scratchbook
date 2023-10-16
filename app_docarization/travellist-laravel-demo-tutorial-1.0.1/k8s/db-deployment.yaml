@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-db-deployment
+spec:
+  replicas: 1  # Adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: travellist-db
+  template:
+    metadata:
+      labels:
+        app: travellist-db
+    spec:
+      containers:
+        - name: travellist-db
+          image: jahidularafat/travellist-db:latest
+          ports:
+            - containerPort: 3306  # Adjust the port if needed
+          env:
+            - name: MYSQL_DATABASE
+              value: ${DB_DATABASE}
+            - name: MYSQL_ROOT_PASSWORD
+              value: ${DB_PASSWORD}
+            - name: MYSQL_PASSWORD
+              value: ${DB_PASSWORD}
+            - name: MYSQL_USER
+              value: ${DB_USERNAME}
+          # Add other environment variables as needed

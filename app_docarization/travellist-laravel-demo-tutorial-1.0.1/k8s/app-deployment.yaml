@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-app-deployment
+spec:
+  replicas: 1  # Adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: travellist-app
+  template:
+    metadata:
+      labels:
+        app: travellist-app
+    spec:
+      containers:
+        - name: travellist-app
+          image: jahidularafat/travellist-app:latest
+          ports:
+            - containerPort: 9000  # Adjust the port if needed

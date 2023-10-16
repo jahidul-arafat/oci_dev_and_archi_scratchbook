@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travellist-nginx-deployment
+spec:
+  replicas: 1  # Adjust the number of replicas as needed
+  selector:
+    matchLabels:
+      app: travellist-nginx
+  template:
+    metadata:
+      labels:
+        app: travellist-nginx
+    spec:
+      containers:
+        - name: travellist-nginx
+          image: jahidularafat/travellist-nginx:kube
+          ports:
+            - containerPort: 80  # Adjust the port if needed
+          # Add volume mounts for Nginx configurations if necessary
