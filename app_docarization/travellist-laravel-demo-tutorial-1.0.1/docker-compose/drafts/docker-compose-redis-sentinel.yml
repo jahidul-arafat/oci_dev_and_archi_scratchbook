@@ -1,0 +1,47 @@
+version: '3'
+services:
+  redis-master:
+    image: redis:latest
+    container_name: redis-master
+    ports:
+      - "6379:6379"
+    command: ["--bind", "0.0.0.0"]
+    networks:
+      - redis-network
+
+  redis-slave:
+    image: redis:latest
+    container_name: redis-slave
+    ports:
+      - "6380:6379"
+    command: ["--bind", "0.0.0.0"]
+    networks:
+      - redis-network
+
+#  redis-sentinel:
+#    image: redis:latest
+#    container_name: redis-sentinel
+#    environment:
+#      - REDIS_MASTER_HOST=redis-master
+#    ports:
+#      - "26379:26379"
+#    volumes:
+#      - ./sentinel.conf:/sentinel.conf
+#    command: [ "redis-sentinel", "/sentinel.conf" ]
+#    networks:
+#      - redis-network
+
+  redis-sentinel:
+    image: redis:latest
+    container_name: redis-sentinel
+    environment:
+      - REDIS_MASTER_HOST=redis-master
+    ports:
+      - "26379:26379"
+    command: ["redis-sentinel", "monitor", "mymaster", "redis-master", "6379", "2"]
+    networks:
+      - redis-network
+
+networks:
+  redis-network:
+    driver: bridge

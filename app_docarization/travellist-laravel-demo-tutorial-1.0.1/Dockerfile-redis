@@ -1,0 +1,32 @@
+# Use the official Redis image as the base image
+FROM redis:latest
+
+# Expose the default Redis port (6379)
+EXPOSE 6379
+
+# Optional: Set a password for Redis (uncomment the following line)
+# ENV REDIS_PASSWORD your_password_here
+
+# Optional: Copy a custom Redis configuration file if needed
+# COPY redis.conf /usr/local/etc/redis/redis.conf
+
+# Optional: If you have AOF or RDB data files, you can mount a volume here
+# VOLUME /data
+
+## Start the Redis server
+#CMD ["redis-server"]
+# Run Redis with production-ready configuration
+CMD ["redis-server", \
+     "--bind", "0.0.0.0", \
+     "--port", "6379", \
+     "--dir", "/data", \
+     "--maxmemory", "512M", \
+     "--appendonly", "yes", \
+     "--requirepass", "redpass", \
+     "--daemonize", "no"]
+
+# Optional: Copy a custom Redis configuration file if needed
+# COPY redis.conf /usr/local/etc/redis/redis.conf
+
+# Optional: If you want to pass custom configurations or require a password
+# CMD ["redis-server", "/usr/local/etc/redis/redis.conf"]

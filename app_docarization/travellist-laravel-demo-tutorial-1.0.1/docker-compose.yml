@@ -1,12 +1,12 @@
 version: "3.8"
 services:
   app:
-    image: jahidularafat/travellist-app:latest
+    image: jahidularafat/travellist-app:redis-sentinel
     container_name: travellist-app
     restart: unless-stopped
     working_dir: /var/www/
-#    networks:
-#      - travellist
+    networks:
+      - travellist
   db:
     image: jahidularafat/travellist-db:latest
     container_name: travellist-db
@@ -20,6 +20,25 @@ services:
       SERVICE_NAME: mysql
     ports:
       - "3306:3306"  # Map host port 3306 to container port 3306
+    networks:
+      - travellist
+
+# --- Basic Redis Configuration -------
+#  redis:
+#    image: redis:latest
+#    container_name: travellist-redis
+#    restart: unless-stopped
+#    ports:
+#      - "6379:6379"
+#    # Uncomment and set a password if needed
+#    # environment:
+#    #   - REDIS_PASSWORD=your_password_here
+#    # Optional: Mount a custom Redis configuration file
+#    # volumes:
+#    #   - ./redis.conf:/usr/local/etc/redis/redis.conf
+#    # Optional: Mount a volume for data persistence
+#    # volumes:
+#    #   - ./data:/data
 #    networks:
 #      - travellist
 
@@ -29,12 +48,50 @@ services:
     restart: unless-stopped
     ports:
       - 8000:80
-#    volumes:
-#      - ./:/var/www
-#      - ./docker-compose/nginx:/etc/nginx/conf.d/
-#    networks:
-#      - travellist
+    #    volumes:
+    #      - ./:/var/www
+    #      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - travellist
 
-#networks:
-#  travellist:
-#    driver: bridge
+#---- Redis Sentinel Configuration --------------------------------
+  redis:
+    image: 'bitnami/redis:latest'
+    container_name: travellist-redis-master
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=str0ng_passw0rd
+    networks:
+      - travellist
+    ports:
+      - '6379:6379' # means container port 6379 is exposed to localhost port 6379; similar to c_6379:l_6379
+  redis-slave:
+    image: 'bitnami/redis:latest'
+    container_name: travellist-redis-slave
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+      - REDIS_MASTER_HOST=redis
+      - REDIS_MASTER_PASSWORD=str0ng_passw0rd
+      - REDIS_PASSWORD=str0ng_passw0rd
+    ports:
+      - '6379'
+    depends_on:
+      - redis
+    networks:
+      - travellist
+  redis-sentinel:
+    image: 'bitnami/redis-sentinel:latest'
+    container_name: travellist-redis-sentinel
+    environment:
+      - REDIS_MASTER_PASSWORD=str0ng_passw0rd
+    depends_on:
+      - redis
+      - redis-slave
+    ports:
+      - '26379:26379' # means docker port 26379 exposed to port localhost port 26379
+    networks:
+      - travellist
+
+networks:
+  travellist:
+    driver: bridge
