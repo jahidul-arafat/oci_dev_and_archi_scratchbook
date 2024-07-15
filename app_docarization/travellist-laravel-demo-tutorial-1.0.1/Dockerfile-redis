@@ -1,5 +1,5 @@
 # Use the official Redis image as the base image
-FROM redis:latest
+FROM redis:7.2-bookworm
 
 # Expose the default Redis port (6379)
 EXPOSE 6379
